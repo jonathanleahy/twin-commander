@@ -1,0 +1,145 @@
+=== Lint Output for Twin Commander (P015) ===
+Date: 2026-02-23 (regenerated after fix stage)
+
+=== go vet ./... ===
+PASS: no issues found
+
+=== go build -o twin-commander . ===
+PASS: build successful (4.5MB statically linked binary)
+
+=== go test -v -count=1 ./... ===
+=== RUN   TestSortEntries_DirectoriesFirstThenFiles
+--- PASS: TestSortEntries_DirectoriesFirstThenFiles (0.00s)
+=== RUN   TestSortEntries_CaseInsensitive
+--- PASS: TestSortEntries_CaseInsensitive (0.00s)
+=== RUN   TestSortEntries_StableSort
+--- PASS: TestSortEntries_StableSort (0.00s)
+=== RUN   TestSortEntries_BrokenSymlinkWithFiles
+--- PASS: TestSortEntries_BrokenSymlinkWithFiles (0.00s)
+=== RUN   TestReadEntries_BasicDirectory
+--- PASS: TestReadEntries_BasicDirectory (0.00s)
+=== RUN   TestReadEntries_HiddenFilesOff
+--- PASS: TestReadEntries_HiddenFilesOff (0.00s)
+=== RUN   TestReadEntries_HiddenFilesOn
+--- PASS: TestReadEntries_HiddenFilesOn (0.00s)
+=== RUN   TestReadEntries_FileMetadata
+--- PASS: TestReadEntries_FileMetadata (0.00s)
+=== RUN   TestReadEntries_ExecutableDetection
+--- PASS: TestReadEntries_ExecutableDetection (0.00s)
+=== RUN   TestReadEntries_Symlinks
+--- PASS: TestReadEntries_Symlinks (0.00s)
+=== RUN   TestReadEntries_BrokenSymlink
+--- PASS: TestReadEntries_BrokenSymlink (0.00s)
+=== RUN   TestReadEntries_NonexistentDir
+--- PASS: TestReadEntries_NonexistentDir (0.00s)
+=== RUN   TestFileEntry_DateFormat
+--- PASS: TestFileEntry_DateFormat (0.00s)
+=== RUN   TestReadEntries_DirectoriesNotExecutable
+--- PASS: TestReadEntries_DirectoriesNotExecutable (0.00s)
+=== RUN   TestFilterEntries_CaseInsensitive
+--- PASS: TestFilterEntries_CaseInsensitive (0.00s)
+=== RUN   TestFilterEntries_MatchesNothing
+--- PASS: TestFilterEntries_MatchesNothing (0.00s)
+=== RUN   TestFilterEntries_DotDotNeverFiltered
+--- PASS: TestFilterEntries_DotDotNeverFiltered (0.00s)
+=== RUN   TestFilterEntries_EmptyQuery
+--- PASS: TestFilterEntries_EmptyQuery (0.00s)
+=== RUN   TestFilterEntries_SubstringMatch
+--- PASS: TestFilterEntries_SubstringMatch (0.00s)
+=== RUN   TestFormatSize_Bytes
+--- PASS: TestFormatSize_Bytes (0.00s)
+=== RUN   TestFormatSize_Kilobytes
+--- PASS: TestFormatSize_Kilobytes (0.00s)
+=== RUN   TestFormatSize_MegabytesAndGigabytes
+--- PASS: TestFormatSize_MegabytesAndGigabytes (0.00s)
+=== RUN   TestFormatSize_BoundaryValues
+--- PASS: TestFormatSize_BoundaryValues (0.00s)
+=== RUN   TestFormatSize_ZeroByte
+--- PASS: TestFormatSize_ZeroByte (0.00s)
+=== RUN   TestFormatSize_VeryLargeFiles
+--- PASS: TestFormatSize_VeryLargeFiles (0.00s)
+=== RUN   TestFormatSize_InaccessibleSentinel
+--- PASS: TestFormatSize_InaccessibleSentinel (0.00s)
+=== RUN   TestPanel_LoadDir
+--- PASS: TestPanel_LoadDir (0.00s)
+=== RUN   TestPanel_LoadDir_SortOrder
+--- PASS: TestPanel_LoadDir_SortOrder (0.00s)
+=== RUN   TestPanel_LoadDir_AtRoot
+--- PASS: TestPanel_LoadDir_AtRoot (0.00s)
+=== RUN   TestPanel_NavigateInto
+--- PASS: TestPanel_NavigateInto (0.00s)
+=== RUN   TestPanel_NavigateInto_ClearsFilter
+--- PASS: TestPanel_NavigateInto_ClearsFilter (0.00s)
+=== RUN   TestPanel_NavigateUp
+--- PASS: TestPanel_NavigateUp (0.00s)
+=== RUN   TestPanel_NavigateUp_CursorPosition
+--- PASS: TestPanel_NavigateUp_CursorPosition (0.00s)
+=== RUN   TestPanel_NavigateUp_ClearsFilter
+--- PASS: TestPanel_NavigateUp_ClearsFilter (0.00s)
+=== RUN   TestPanel_NavigateUp_AtRoot
+--- PASS: TestPanel_NavigateUp_AtRoot (0.00s)
+=== RUN   TestPanel_ToggleHidden
+--- PASS: TestPanel_ToggleHidden (0.00s)
+=== RUN   TestPanel_SetFilter
+--- PASS: TestPanel_SetFilter (0.00s)
+=== RUN   TestPanel_SetFilter_StatusBarUpdates
+--- PASS: TestPanel_SetFilter_StatusBarUpdates (0.00s)
+=== RUN   TestPanel_ClearFilter
+--- PASS: TestPanel_ClearFilter (0.00s)
+=== RUN   TestPanel_Refresh
+--- PASS: TestPanel_Refresh (0.00s)
+=== RUN   TestPanel_Refresh_PreservesCursor
+--- PASS: TestPanel_Refresh_PreservesCursor (0.00s)
+=== RUN   TestPanel_Refresh_EntryDisappears
+--- PASS: TestPanel_Refresh_EntryDisappears (0.00s)
+=== RUN   TestPanel_Refresh_ReappliesFilter
+--- PASS: TestPanel_Refresh_ReappliesFilter (0.00s)
+=== RUN   TestPanel_StatusText
+--- PASS: TestPanel_StatusText (0.00s)
+=== RUN   TestPanel_StatusText_HiddenIndicator
+--- PASS: TestPanel_StatusText_HiddenIndicator (0.00s)
+=== RUN   TestPanel_StatusText_NoHiddenIndicator
+--- PASS: TestPanel_StatusText_NoHiddenIndicator (0.00s)
+=== RUN   TestPanel_SetActive
+--- PASS: TestPanel_SetActive (0.00s)
+=== RUN   TestPanel_TitleUpdates
+--- PASS: TestPanel_TitleUpdates (0.00s)
+=== RUN   TestPanel_TitleUpdatesOnNavigation
+--- PASS: TestPanel_TitleUpdatesOnNavigation (0.00s)
+=== RUN   TestPanel_NavigateInto_Inaccessible
+--- PASS: TestPanel_NavigateInto_Inaccessible (0.00s)
+=== RUN   TestPanel_DotDotNoSlashSuffix
+--- PASS: TestPanel_DotDotNoSlashSuffix (0.00s)
+=== RUN   TestPanel_DotDotEmptySizeAndDate
+--- PASS: TestPanel_DotDotEmptySizeAndDate (0.00s)
+=== RUN   TestPanel_DirectorySlashSuffix
+--- PASS: TestPanel_DirectorySlashSuffix (0.00s)
+=== RUN   TestPanel_FileNoSlashSuffix
+--- PASS: TestPanel_FileNoSlashSuffix (0.00s)
+=== RUN   TestPanel_SymlinkToDirRendering
+--- PASS: TestPanel_SymlinkToDirRendering (0.00s)
+=== RUN   TestPanel_BrokenSymlinkRendering
+--- PASS: TestPanel_BrokenSymlinkRendering (0.00s)
+=== RUN   TestPanel_StatusText_InaccessibleEntries
+--- PASS: TestPanel_StatusText_InaccessibleEntries (0.00s)
+=== RUN   TestPanel_EmptyDirectory
+--- PASS: TestPanel_EmptyDirectory (0.00s)
+=== RUN   TestPanel_FilterWithHiddenToggle
+--- PASS: TestPanel_FilterWithHiddenToggle (0.00s)
+=== RUN   TestPanel_SelectedEntry
+--- PASS: TestPanel_SelectedEntry (0.00s)
+=== RUN   TestPanel_LoadDir_ErrorSetsStatus
+--- PASS: TestPanel_LoadDir_ErrorSetsStatus (0.00s)
+=== RUN   TestPanel_TableRowCount
+--- PASS: TestPanel_TableRowCount (0.00s)
+=== RUN   TestPanel_DateColumnFormat
+--- PASS: TestPanel_DateColumnFormat (0.00s)
+=== RUN   TestPanel_StatusText_PreciseFormat
+--- PASS: TestPanel_StatusText_PreciseFormat (0.00s)
+PASS
+ok  	twin-commander	0.005s
+
+=== Summary ===
+go vet: 0 warnings, 0 errors
+go build: successful (4.5MB binary)
+go test: 64 pass, 0 fail, 0 skip
