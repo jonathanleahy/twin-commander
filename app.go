@@ -1029,7 +1029,8 @@ func (a *App) updateStatusBars() {
 	}
 }
 
-// setStatusError displays an error message in the active panel's status bar.
+// setStatusError displays a message in the active panel's status bar.
+// The message auto-clears after 3 seconds, restoring the normal status text.
 func (a *App) setStatusError(msg string) {
 	if a.ViewMode == ViewHybridTree {
 		a.RightStatus.SetText(msg)
@@ -1039,6 +1040,18 @@ func (a *App) setStatusError(msg string) {
 		a.RightStatus.SetText(msg)
 	}
 	a.ActivePanel.StatusBar = msg
+
+	// Cancel any existing auto-clear timer
+	if a.statusTimer != nil {
+		a.statusTimer.Stop()
+	}
+
+	// Auto-clear after 3 seconds
+	a.statusTimer = time.AfterFunc(3*time.Second, func() {
+		a.Application.QueueUpdateDraw(func() {
+			a.updateStatusBars()
+		})
+	})
 }
 
 func (a *App) jumpToTop() {

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -57,6 +59,7 @@ type App struct {
 	Bookmarks     *BookmarkManager
 	ActiveTheme   ThemeColors
 	DialogActive  bool
+	statusTimer   *time.Timer // auto-clear timer for status messages
 }
 
 // NewApp creates and initializes the application.
