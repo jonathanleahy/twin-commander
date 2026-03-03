@@ -511,3 +511,25 @@ func TestIntegration_DualPaneNavigationIndependent(t *testing.T) {
 		t.Errorf("left panel should still be at %q, got %q", alphaPath, app.LeftPanel.Path)
 	}
 }
+
+// TestIntegration_FuzzyModeActivation verifies Ctrl+P enters fuzzy mode and Esc exits.
+func TestIntegration_FuzzyModeActivation(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	if app.FuzzyMode {
+		t.Fatal("fuzzy mode should not be active initially")
+	}
+
+	// Ctrl+P should enter fuzzy mode
+	pressKey(app, tcell.KeyCtrlP, 0, tcell.ModNone)
+	if !app.FuzzyMode {
+		t.Error("expected fuzzy mode active after Ctrl+P")
+	}
+
+	// Escape should exit fuzzy mode
+	pressKey(app, tcell.KeyEscape, 0, tcell.ModNone)
+	if app.FuzzyMode {
+		t.Error("expected fuzzy mode inactive after Escape")
+	}
+}

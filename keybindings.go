@@ -60,6 +60,12 @@ type App struct {
 	ActiveTheme   ThemeColors
 	DialogActive  bool
 	statusTimer   *time.Timer // auto-clear timer for status messages
+
+	// Fuzzy finder state
+	FuzzyMode   bool
+	FuzzyInput  *tview.InputField
+	FuzzyTable  *tview.Table
+	FuzzyCancel chan struct{}
 }
 
 // NewApp creates and initializes the application.
@@ -122,6 +128,9 @@ func (a *App) handleKeyEvent(event *tcell.EventKey) *tcell.EventKey {
 	}
 	if a.SearchMode {
 		return a.handleSearchKey(event)
+	}
+	if a.FuzzyMode {
+		return a.handleFuzzyKey(event)
 	}
 	if a.FilterMode {
 		return a.handleFilterModeKey(event)
@@ -201,6 +210,9 @@ func (a *App) handleNormalModeKey(event *tcell.EventKey) *tcell.EventKey {
 		return nil
 	case tcell.KeyCtrlF:
 		a.enterSearchMode()
+		return nil
+	case tcell.KeyCtrlP:
+		a.enterFuzzyMode()
 		return nil
 	case tcell.KeyCtrlL:
 		a.showGoToPathDialog()
@@ -422,6 +434,45 @@ func (a *App) handleSearchKey(event *tcell.EventKey) *tcell.EventKey {
 	return event
 }
 
+// handleFuzzyKey handles keys when fuzzy finder is active.
+func (a *App) handleFuzzyKey(event *tcell.EventKey) *tcell.EventKey {
+	switch event.Key() {
+	case tcell.KeyEscape:
+		a.exitFuzzyMode()
+		return nil
+	case tcell.KeyTab:
+		// Toggle focus between input and results
+		if a.Application.GetFocus() == a.FuzzyInput {
+			a.Application.SetFocus(a.FuzzyTable)
+		} else {
+			a.Application.SetFocus(a.FuzzyInput)
+		}
+		return nil
+	case tcell.KeyEnter:
+		if a.Application.GetFocus() == a.FuzzyTable {
+			a.navigateToFuzzyResult()
+			return nil
+		}
+		// If input is focused, switch to results
+		if a.FuzzyTable.GetRowCount() > 0 {
+			a.Application.SetFocus(a.FuzzyTable)
+			a.FuzzyTable.Select(0, 0)
+		}
+		return nil
+	case tcell.KeyRune:
+		// When table is focused, j/k navigate
+		if a.Application.GetFocus() == a.FuzzyTable {
+			switch event.Rune() {
+			case 'j':
+				return tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone)
+			case 'k':
+				return tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
+			}
+		}
+	}
+	return event
+}
+
 // navigateToSearchResult opens the directory containing the selected search result.
 // handleFilterModeKey handles keys in filter mode.
 func (a *App) handleFilterModeKey(event *tcell.EventKey) *tcell.EventKey {
@@ -532,7 +583,7 @@ func (a *App) handleMouseEvent(event *tcell.EventMouse, action tview.MouseAction
 	}
 
 	// Don't interfere with dialogs or overlays
-	if a.DialogActive || a.ViewerActive || a.SearchMode || a.FilterMode {
+	if a.DialogActive || a.ViewerActive || a.SearchMode || a.FilterMode || a.FuzzyMode {
 		return event, action
 	}
 

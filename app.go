@@ -184,6 +184,18 @@ func NewApp() *App {
 
 	app.setupSearchHandlers()
 
+	// Create fuzzy finder UI
+	app.FuzzyInput = tview.NewInputField().
+		SetLabel(" Find: ").
+		SetFieldWidth(0)
+	app.FuzzyTable = tview.NewTable().
+		SetSelectable(true, false)
+	app.FuzzyTable.SetBorder(true)
+	app.FuzzyTable.SetTitle("Fuzzy Results")
+	app.FuzzyTable.SetBorderPadding(0, 0, 1, 1)
+
+	app.setupFuzzyHandlers()
+
 	// Create inline preview pane with scrollbar (before applyConfig which themes it)
 	app.PreviewPane = tview.NewTextView().
 		SetDynamicColors(true).
@@ -388,6 +400,7 @@ func (a *App) buildLayout() {
 	a.Pages.RemovePage("dual")
 	a.Pages.RemovePage("viewer")
 	a.Pages.RemovePage("search")
+	a.Pages.RemovePage("fuzzy")
 
 	// Hybrid tree layout: tree on left, file panel on right
 	treeCol := tview.NewFlex().SetDirection(tview.FlexRow).
@@ -447,6 +460,11 @@ func (a *App) buildLayout() {
 		AddItem(a.SearchInput, 1, 0, true).
 		AddItem(a.SearchTable, 0, 1, false)
 
+	// Fuzzy finder overlay
+	fuzzyFlex := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(a.FuzzyInput, 1, 0, true).
+		AddItem(a.FuzzyTable, 0, 1, false)
+
 	// Viewer layout: menu bar on top, viewer below
 	viewerRoot := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(a.MenuBar.Bar, 1, 0, false).
@@ -457,6 +475,7 @@ func (a *App) buildLayout() {
 	a.Pages.AddPage("dual", a.RootFlex, true, !isHybrid)
 	a.Pages.AddPage("viewer", viewerRoot, true, false)
 	a.Pages.AddPage("search", searchFlex, true, false)
+	a.Pages.AddPage("fuzzy", fuzzyFlex, true, false)
 }
 
 // setInitialFocus sets focus based on current view mode.
@@ -1214,6 +1233,7 @@ func (a *App) buildMenuBar() {
 				{Label: "Filter (glob/regex)", Shortcut: "/", Action: func() { a.enterFilterMode() }},
 				{Label: "Recursive Search", Shortcut: "Ctrl+F / F3", Action: func() { a.enterSearchMode() }},
 				{Label: "Content Search", Shortcut: "Ctrl+/", Action: func() { a.enterContentSearch() }},
+				{Label: "Fuzzy Finder", Shortcut: "Ctrl+P", Action: func() { a.enterFuzzyMode() }},
 			},
 		},
 		{
@@ -1406,6 +1426,159 @@ func (a *App) updatePreview() {
 	a.PreviewWrapper.SetTitle(fmt.Sprintf(" %s ", entry.Name))
 	a.PreviewPane.SetText(highlighted)
 	a.PreviewPane.ScrollToBeginning()
+}
+
+// --- Fuzzy finder ---
+
+// setupFuzzyHandlers configures the fuzzy input with debounced search.
+func (a *App) setupFuzzyHandlers() {
+	var debounceTimer *time.Timer
+
+	a.FuzzyInput.SetChangedFunc(func(text string) {
+		if debounceTimer != nil {
+			debounceTimer.Stop()
+		}
+		debounceTimer = time.AfterFunc(150*time.Millisecond, func() {
+			a.Application.QueueUpdateDraw(func() {
+				a.runFuzzySearch(text)
+			})
+		})
+	})
+}
+
+// enterFuzzyMode activates the fuzzy finder overlay.
+func (a *App) enterFuzzyMode() {
+	a.FuzzyMode = true
+	a.FuzzyInput.SetText("")
+	a.FuzzyTable.Clear()
+	a.Pages.SwitchToPage("fuzzy")
+	a.Application.SetFocus(a.FuzzyInput)
+}
+
+// exitFuzzyMode returns from fuzzy finder to the previous view.
+func (a *App) exitFuzzyMode() {
+	a.FuzzyMode = false
+	if a.FuzzyCancel != nil {
+		close(a.FuzzyCancel)
+		a.FuzzyCancel = nil
+	}
+	if a.ViewMode == ViewHybridTree {
+		a.Pages.SwitchToPage("hybrid")
+		if a.TreeFocused {
+			a.Application.SetFocus(a.TreePanel.TreeView)
+		} else {
+			a.Application.SetFocus(a.RightPanel.Table)
+		}
+	} else {
+		a.Pages.SwitchToPage("dual")
+		a.Application.SetFocus(a.ActivePanel.Table)
+	}
+}
+
+// runFuzzySearch executes a fuzzy search with the given query.
+func (a *App) runFuzzySearch(query string) {
+	// Cancel previous search
+	if a.FuzzyCancel != nil {
+		close(a.FuzzyCancel)
+	}
+	a.FuzzyCancel = make(chan struct{})
+	cancelCh := a.FuzzyCancel
+
+	a.FuzzyTable.Clear()
+
+	if query == "" {
+		return
+	}
+
+	rootDir := a.ActivePanel.Path
+	if a.ViewMode == ViewHybridTree {
+		rootDir = a.TreePanel.RootPath
+	}
+
+	resultCh := make(chan FuzzyResult, 100)
+	go FuzzySearch(FuzzySearchOpts{
+		RootDir:    rootDir,
+		Pattern:    query,
+		MaxResults: 200,
+		ShowHidden: a.ActivePanel.ShowHidden,
+	}, resultCh, cancelCh)
+
+	go func() {
+		row := 0
+		for result := range resultCh {
+			r := result
+			rowIdx := row
+			a.Application.QueueUpdateDraw(func() {
+				style := tcell.StyleDefault
+				if r.IsDir {
+					style = style.Foreground(tcell.ColorBlue).Bold(true)
+				}
+				a.FuzzyTable.SetCell(rowIdx, 0,
+					tview.NewTableCell(r.RelPath).
+						SetStyle(style).
+						SetReference(r.Path))
+			})
+			row++
+		}
+	}()
+}
+
+// navigateToFuzzyResult opens the selected fuzzy search result.
+func (a *App) navigateToFuzzyResult() {
+	row, _ := a.FuzzyTable.GetSelection()
+	cell := a.FuzzyTable.GetCell(row, 0)
+	if cell == nil {
+		return
+	}
+	ref := cell.GetReference()
+	if ref == nil {
+		return
+	}
+	fullPath := ref.(string)
+
+	// Determine target directory and file name
+	info, err := os.Stat(fullPath)
+	if err != nil {
+		a.exitFuzzyMode()
+		return
+	}
+
+	var dir, baseName string
+	if info.IsDir() {
+		dir = fullPath
+		baseName = ""
+	} else {
+		dir = filepath.Dir(fullPath)
+		baseName = filepath.Base(fullPath)
+	}
+
+	a.exitFuzzyMode()
+
+	// Navigate the active panel to the directory
+	if a.ViewMode == ViewHybridTree {
+		a.TreePanel.NavigateToPath(dir)
+		a.RightPanel.Path = dir
+		a.RightPanel.LoadDir()
+	} else {
+		a.ActivePanel.Path = dir
+		a.ActivePanel.LoadDir()
+	}
+
+	// Select the file if applicable
+	if baseName != "" {
+		panel := a.ActivePanel
+		if a.ViewMode == ViewHybridTree {
+			panel = a.RightPanel
+		}
+		for i, e := range panel.Entries {
+			if e.Name == baseName {
+				panel.Table.Select(i, 0)
+				break
+			}
+		}
+	}
+
+	a.updateStatusBars()
 }
 
 // --- Selection handlers ---
