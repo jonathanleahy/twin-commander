@@ -2,27 +2,82 @@
 
 ## Summary
 
-Twin Commander is a Norton Commander / Midnight Commander style dual-pane terminal file explorer built in Go using the tview library. It provides keyboard-driven navigation, real-time search/filter, color-coded file types, and cross-platform terminal support. Ships as a single static binary with zero runtime dependencies.
+Twin Commander is a Norton Commander / Midnight Commander style dual-pane terminal file explorer built in Go using the tview library. It provides keyboard-driven navigation, real-time search/filter, syntax-highlighted file preview, fuzzy finder, async directory sizes, workspace tabs, configurable themes, and cross-platform terminal support. Ships as a single static binary with zero runtime dependencies.
 
 ## Files Delivered
+
+### Application Source
 
 | File | Purpose | Lines |
 |------|---------|-------|
 | `main.go` | Entry point | ~14 |
-| `app.go` | Application controller, layout, key dispatch | ~284 |
-| `panel.go` | Panel state, directory operations, rendering | ~264 |
+| `app.go` | Application controller, layout, key dispatch, feature integration | ~1785 |
+| `keybindings.go` | Key event handling, mode dispatch, shortcut routing | ~662 |
+| `panel.go` | Panel state, directory operations, rendering | ~355 |
 | `entry.go` | FileEntry struct, ReadEntries, SortEntries | ~101 |
-| `format.go` | FormatSize function | ~22 |
-| `filter.go` | FilterEntries function | ~21 |
-| `entry_test.go` | Entry/sort tests (14 tests) | ~345 |
-| `filter_test.go` | Filter logic tests (5 tests) | ~101 |
-| `format_test.go` | Size formatting tests (7 tests) | ~115 |
-| `panel_test.go` | Panel integration tests (38 tests) | ~450 |
-| `go.mod` | Module definition | ~17 |
-| `go.sum` | Dependency checksums | auto |
-| `docs/README.md` | User documentation | ~129 |
-| `docs/lint-output.txt` | Lint/diagnostic output | - |
-| `DELIVERABLES.md` | This file | - |
+| `tree.go` | Persistent filesystem tree panel with expand/collapse | ~383 |
+| `menu.go` | Menu bar with hotkeys and dropdown navigation | ~200 |
+| `viewer.go` | Fullscreen file viewer with syntax highlighting | ~300 |
+| `dialog.go` | Confirm, error, choice, and input dialogs | ~200 |
+| `dialogs.go` | Keybindings dialog, permission dialog, UI helpers | ~438 |
+| `fileops.go` | File operations (copy, move, delete, trash+trashinfo, mkdir, rename) | ~400 |
+| `filehandlers.go` | File operation handlers with UI integration | ~804 |
+| `search.go` | Recursive filename search with cancellation | ~150 |
+| `fuzzy.go` | Fuzzy filename matching and search with scoring algorithm | ~174 |
+| `dirsize.go` | Async directory size calculation with thread-safe cache | ~131 |
+| `workspace.go` | Workspace/tab management with full state save/restore | ~108 |
+| `contentgrep.go` | Content search (grep) with binary/size skip, cancel support | ~150 |
+| `filter.go` | Advanced filtering (substring, glob, regex, negation, multi-term) | ~100 |
+| `selection.go` | Pure multi-file selection model (toggle, visual, invert, pattern) | ~100 |
+| `history.go` | Pure browser-style directory history (back/forward) | ~60 |
+| `permissions.go` | Permission formatting (`rwxr-xr-x`), octal parsing, chmod | ~80 |
+| `commandbar.go` | Shell command parsing, variable expansion, execution | ~80 |
+| `sort.go` | Multi-mode sorting (name, size, date, extension) | ~80 |
+| `format.go` | Human-readable size formatting | ~22 |
+| `viewmode.go` | View mode definitions (dual-pane, hybrid tree) | ~20 |
+| `keys.go` | Multi-key sequence tracking (gg, dd, yy, gs) | ~40 |
+| `config.go` | JSON configuration persistence | ~100 |
+| `theme.go` | Color theme system (6 themes) | ~200 |
+| `scrollbar.go` | Scrollbar wrapper for text views | ~50 |
+| `highlight.go` | Syntax highlighting for 14+ languages | ~300 |
+| `icons.go` | Nerd Font file/directory icons | ~200 |
+| `git.go` | Git status detection, diff, staging | ~200 |
+| `bookmark.go` | Directory bookmarks with dialog UI | ~150 |
+| `external.go` | External tool integration (editor, bcomp, xdg-open, clipboard) | ~100 |
+| `util.go` | Binary detection, file head reading | ~40 |
+
+### Test Files
+
+| File | Purpose | Tests |
+|------|---------|-------|
+| `entry_test.go` | Entry/sort tests | 14 |
+| `filter_test.go` | Filter logic tests | 5 |
+| `format_test.go` | Size formatting tests | 7 |
+| `panel_test.go` | Panel integration tests | 38 |
+| `selection_test.go` | Selection model tests | 20 |
+| `history_test.go` | History model tests | 8 |
+| `permissions_test.go` | Permission formatting tests | 10 |
+| `commandbar_test.go` | Command parsing tests | 8 |
+| `contentgrep_test.go` | Content search tests | 13 |
+| `menu_test.go` | Menu alignment and hotkey tests | 4 |
+| `fuzzy_test.go` | Fuzzy matching and search tests | 14 |
+| `dirsize_test.go` | Directory size cache tests | 7 |
+| `workspace_test.go` | Workspace management tests | 8 |
+| `app_integration_test.go` | Integration tests for key sequences | 19 |
+
+**Total: 175 tests, 175 pass, 0 fail**
+
+### Documentation & Config
+
+| File | Purpose |
+|------|---------|
+| `README.md` | Full user documentation and keyboard reference |
+| `docs/README.md` | Documentation copy |
+| `docs/DELIVERABLES.md` | This file |
+| `docs/lint-output.txt` | Lint/diagnostic output |
+| `go.mod` | Module definition |
+| `go.sum` | Dependency checksums |
+| `dev.sh` | Development run script |
 
 ## Technology
 
@@ -35,203 +90,89 @@ Twin Commander is a Norton Commander / Midnight Commander style dual-pane termin
 ## Test Results (from `go test -v ./...` output)
 
 ```
-# tests 64
-# pass 64
+# tests 175
+# pass 175
 # fail 0
-ok  twin-commander  0.005s
+ok  twin-commander  0.148s
 ```
 
-### Test Breakdown
+### Test Coverage by Module
 
-**format_test.go (7 tests)**
-- TestFormatSize_Bytes — TS-19
-- TestFormatSize_Kilobytes — TS-20
-- TestFormatSize_MegabytesAndGigabytes — TS-21
-- TestFormatSize_BoundaryValues — EC-5
-- TestFormatSize_ZeroByte — EC-6
-- TestFormatSize_VeryLargeFiles — EC-7
-- TestFormatSize_InaccessibleSentinel — EC-18
+**format_test.go (7 tests)** — Size formatting (bytes, KB, MB/GB, boundary values, zero byte, very large, inaccessible sentinel)
 
-**filter_test.go (5 tests)**
-- TestFilterEntries_CaseInsensitive — TS-29
-- TestFilterEntries_MatchesNothing — EC-10
-- TestFilterEntries_DotDotNeverFiltered — TS-43
-- TestFilterEntries_EmptyQuery
-- TestFilterEntries_SubstringMatch
+**filter_test.go (5 tests)** — Filter logic (case insensitive, matches nothing, dotdot never filtered, empty query, substring)
 
-**entry_test.go (14 tests)**
-- TestSortEntries_DirectoriesFirstThenFiles — TS-18
-- TestSortEntries_CaseInsensitive — EC-15
-- TestSortEntries_StableSort
-- TestSortEntries_BrokenSymlinkWithFiles — EC-11 (sort)
-- TestReadEntries_BasicDirectory (integration)
-- TestReadEntries_HiddenFilesOff (integration)
-- TestReadEntries_HiddenFilesOn (integration)
-- TestReadEntries_FileMetadata (integration)
-- TestReadEntries_ExecutableDetection (integration)
-- TestReadEntries_Symlinks (integration)
-- TestReadEntries_BrokenSymlink — EC-11 (integration)
-- TestReadEntries_NonexistentDir
-- TestFileEntry_DateFormat
-- TestReadEntries_DirectoriesNotExecutable
+**entry_test.go (14 tests)** — Entry struct and sort (directories first, case insensitive, stable sort, broken symlink, basic directory, hidden files, metadata, executable, symlinks, nonexistent dir, date format)
 
-**panel_test.go (38 tests)**
-- TestPanel_LoadDir — directory loading
-- TestPanel_LoadDir_SortOrder — verified sort: .., dirs, files
-- TestPanel_LoadDir_AtRoot — EC-2
-- TestPanel_NavigateInto — TS-10
-- TestPanel_NavigateInto_ClearsFilter — TS-30
-- TestPanel_NavigateUp — TS-13
-- TestPanel_NavigateUp_CursorPosition — TS-14
-- TestPanel_NavigateUp_ClearsFilter — TS-30
-- TestPanel_NavigateUp_AtRoot — EC-9
-- TestPanel_ToggleHidden — TS-24
-- TestPanel_SetFilter — TS-26
-- TestPanel_SetFilter_StatusBarUpdates — TS-26 count
-- TestPanel_ClearFilter — TS-27
-- TestPanel_Refresh — TS-33
-- TestPanel_Refresh_PreservesCursor — TS-33 cursor
-- TestPanel_Refresh_EntryDisappears — EC-19
-- TestPanel_Refresh_ReappliesFilter — FR-16
-- TestPanel_StatusText — TS-16
-- TestPanel_StatusText_HiddenIndicator — TS-42
-- TestPanel_StatusText_NoHiddenIndicator — TS-23
-- TestPanel_SetActive — FR-3
-- TestPanel_TitleUpdates — FR-8
-- TestPanel_TitleUpdatesOnNavigation — TS-15
-- TestPanel_NavigateInto_Inaccessible — TS-37/38
-- TestPanel_DotDotNoSlashSuffix — FR-2
-- TestPanel_DotDotEmptySizeAndDate — FR-2
-- TestPanel_DirectorySlashSuffix — FR-2
-- TestPanel_FileNoSlashSuffix — FR-2
-- TestPanel_SymlinkToDirRendering — FR-19
-- TestPanel_BrokenSymlinkRendering — EC-11
-- TestPanel_StatusText_InaccessibleEntries — FR-9
-- TestPanel_EmptyDirectory — EC-1
-- TestPanel_FilterWithHiddenToggle — EC-13
-- TestPanel_SelectedEntry — panel selection
-- TestPanel_LoadDir_ErrorSetsStatus — ERR-2
-- TestPanel_TableRowCount — rendering correctness
-- TestPanel_DateColumnFormat — FR-2 date format
-- TestPanel_StatusText_PreciseFormat — FR-9 precise values
+**panel_test.go (38 tests)** — Panel integration (load dir, sort order, root, navigate into/up, cursor position, toggle hidden, filter, status bar, refresh, title updates, inaccessible, rendering, symlinks, empty directory)
 
-**Total: 64 tests, 64 pass, 0 fail**
+**selection_test.go (20 tests)** — Selection model (toggle, visual select, invert, pattern select, clear, count, paths)
 
-## Test Scenario Coverage
+**history_test.go (8 tests)** — History model (push, back, forward, clear, boundary conditions)
 
-### Programmatic Scenarios (tested with `go test`)
-| Scenario | Status |
-|----------|--------|
-| TS-18: Sort order | PASS |
-| TS-19: Size formatting - bytes | PASS |
-| TS-20: Size formatting - KB | PASS |
-| TS-21: Size formatting - MB/GB | PASS |
-| TS-29: Filter case-insensitive | PASS |
-| EC-1: Empty directory | PASS |
-| EC-2: Root directory no .. | PASS |
-| EC-5: Size boundary values | PASS |
-| EC-6: Zero-byte file | PASS |
-| EC-7: Very large file | PASS |
-| EC-9: Backspace at root | PASS |
-| EC-10: Filter matches nothing | PASS |
-| EC-11: Broken symlink | PASS |
-| EC-13: Hidden + filter interaction | PASS |
-| EC-15: Case-insensitive sort | PASS |
-| EC-18: Inaccessible sentinel | PASS |
-| EC-19: Refresh entry disappears | PASS |
+**permissions_test.go (10 tests)** — Permission formatting (rwx display, octal parsing, special modes)
 
-### Terminal Scenarios (require running `./twin-commander`)
-| Scenario | Implementation Status |
-|----------|----------------------|
-| TS-1: Dual-pane layout | Implemented |
-| TS-2: File listing display | Implemented |
-| TS-3: Active panel cyan border | Implemented |
-| TS-4/5: Tab switches panel | Implemented |
-| TS-6-9: Cursor navigation | Implemented (tview handles) |
-| TS-10: Enter on directory | Implemented |
-| TS-11: Enter on file (no-op) | Implemented |
-| TS-12: Enter on .. | Implemented |
-| TS-13-14: Backspace navigation | Implemented |
-| TS-15: Path header updates | Implemented |
-| TS-16: Status bar | Implemented |
-| TS-17: Scrolling | Implemented (tview handles) |
-| TS-22: Color scheme | Implemented |
-| TS-23-25: Hidden files | Implemented |
-| TS-26-28: Filter mode | Implemented |
-| TS-30: Filter clears on nav | Implemented |
-| TS-31: Shortcuts disabled in filter | Implemented |
-| TS-32: Ctrl+C quits in filter | Implemented |
-| TS-33: Refresh | Implemented |
-| TS-34-35: Quit | Implemented |
-| TS-36-38: Permission errors | Implemented |
-| TS-39-40: Symlinks | Implemented |
-| TS-41: Starting directory is CWD | Implemented |
-| TS-42-43: Status bar edge cases | Implemented |
+**commandbar_test.go (8 tests)** — Command parsing (variable expansion, %f/%d/%s substitution, edge cases)
 
-## Functional Requirements Coverage
+**contentgrep_test.go (13 tests)** — Content search (basic match, binary skip, size skip, cancellation, regex)
 
-| Requirement | Status | Notes |
-|-------------|--------|-------|
-| FR-1: Dual-pane layout | Implemented | tview.Flex with equal proportions |
-| FR-2: File listing display | Implemented | Name/Size/Date columns, "/" suffix, ".." entry |
-| FR-3: Active panel indicator | Implemented | tcell.ColorAqua border |
-| FR-4: Panel switching | Implemented | Tab key |
-| FR-5: Cursor navigation | Implemented | tview table handles Up/Down |
-| FR-6: Enter directory | Implemented | With error handling |
-| FR-7: Parent directory | Implemented | Backspace, cursor positioning |
-| FR-8: Directory path header | Implemented | Panel title |
-| FR-9: Status bar | Implemented | N items, SIZE, [H] prefix |
-| FR-10: Scrolling | Implemented | tview handles automatically |
-| FR-11: Sort order | Implemented | Dirs first, case-insensitive |
-| FR-12: File size formatting | Implemented | B/K/M/G with thresholds |
-| FR-13: Color scheme | Implemented | Blue dirs, green exec, purple symlinks, dark gray inaccessible |
-| FR-14: Hidden files toggle | Implemented | Per-panel, . key |
-| FR-15: Search/filter | Implemented | Nice-to-have, fully implemented |
-| FR-16: Refresh | Implemented | r key, cursor preservation |
-| FR-17: Quit | Implemented | q and Ctrl+C |
-| FR-18: Permission error handling | Implemented | ERR-1 and ERR-2 messages |
-| FR-19: Symlink display | Implemented | Purple, navigable dir symlinks, broken symlink handling |
-| FR-20: Starting directory | Implemented | os.Getwd(), left panel active |
+**menu_test.go (4 tests)** — Menu alignment (click targets, dropdown offsets, consistency, hotkey mapping)
 
-## Nice-to-Have Features
+**fuzzy_test.go (14 tests)** — Fuzzy matching (basic match, no match, case insensitive, empty pattern, contiguous beats scattered, prefix beats middle, word boundary, end-to-end search, cancellation, hidden files, max results, directory results)
 
-### Implemented
-- FR-15: Search/Filter — full implementation with filter mode, case-insensitive substring matching, Enter to keep filter, Escape to clear, auto-clear on navigation, pre-fill on reopen
+**dirsize_test.go (7 tests)** — Directory size cache (basic calculation, nested dirs, cache hit, invalidation, invalidate all, cancel, batch request)
 
-### Deferred
-- None. All specified features are implemented.
+**workspace_test.go (8 tests)** — Workspace management (new has one, add creates, can't remove last, remove adjusts active, remove middle, current, auto name, render tab bar)
 
-## Non-Functional Requirements
-
-| Requirement | Status |
-|-------------|--------|
-| NFR-1: Single binary | Met — `go build -o twin-commander .` produces one 4.5MB statically linked executable |
-| NFR-2: Cross-platform | Met — uses `filepath` package, no hardcoded separators |
-| NFR-3: Terminal compatibility | Met — uses only tcell named colors |
-| NFR-4: Directory load performance | Expected to meet (<500ms for 1000 entries) |
-| NFR-5: Startup time | Expected to meet (<1s first render) |
-| NFR-6: Memory usage | Expected to meet (<50MB for typical use) |
-
-## Integration Tests
-
-All panel tests and entry tests use real temporary directories (via `t.TempDir()`), real filesystem operations, and real symlinks. No mocking of filesystem calls. This satisfies the integration testing requirement for modules that interact with the filesystem.
+**app_integration_test.go (19 tests)** — Integration tests (key sequences gg/G/dd/yy/gs, menu hotkeys, view toggle, search mode, fuzzy mode activation, workspace create, workspace switch preserves path)
 
 ## Architecture
 
 ```
 main.go → NewApp() → App.Run()
-                      ├── LeftPanel (tview.Table + Panel state)
-                      ├── RightPanel (tview.Table + Panel state)
-                      ├── FilterInput (tview.InputField, hidden by default)
-                      └── InputCapture (key dispatch: normal/filter mode)
+                      ├── WorkspaceManager (workspace tabs, state save/restore)
+                      ├── MenuBar (6 menus, hotkeys, mouse support)
+                      ├── TreePanel (persistent filesystem hierarchy)
+                      ├── LeftPanel/RightPanel (tview.Table + Panel state)
+                      │   ├── Selection model
+                      │   ├── History model
+                      │   ├── DirSizeCache (async background dir sizes)
+                      │   └── Permissions
+                      ├── Preview/Viewer (syntax highlighting, scrollbar)
+                      ├── FuzzyFinder (Ctrl+P, debounced async search)
+                      ├── Search (Ctrl+F, recursive filename)
+                      ├── ContentGrep (Ctrl+/, file content search)
+                      ├── CommandBar (shell commands)
+                      ├── Bookmarks (1-9, Ctrl+B dialog)
+                      └── InputCapture (key dispatch: normal/filter/search/fuzzy modes)
 
 Panel.LoadDir() → ReadEntries() → SortEntries() → FilterEntries() → renderTable()
+                                                                      └── DirSizeCache.RequestSizesForDir()
 ```
+
+## Key Features Added (PRs #7-#10)
+
+### PR #7: Mouse Menu Alignment Fix
+- Fixed off-by-one in `DropdownOffset()` and `MenuIndexAtX()` — click targets now align correctly with rendered menu items
+
+### PR #8: Fuzzy Finder (Ctrl+P)
+- Pure Go fuzzy scoring algorithm (contiguous, word-boundary, prefix, case bonuses)
+- Async filesystem search with 150ms debounce
+- Tab toggles input/results, Enter navigates, Esc closes
+
+### PR #9: Directory Size Visualization
+- Thread-safe `DirSizeCache` with async background calculation
+- Live-updating size column (`<DIR>` → `...` → actual size)
+- Cache invalidation on file operations
+
+### PR #10: Workspace Tabs
+- Full state save/restore (panel paths, sort, hidden, view mode, tree state, splits)
+- Tab bar auto-shows with 2+ workspaces, auto-hides with 1
+- Ctrl+N create, Ctrl+W close, Alt+1-9 switch
 
 ## Build & Run
 
 ```bash
-cd projects/015-twin-commander/3-development
 go build -o twin-commander .
 go test -v ./...
 ./twin-commander
@@ -239,4 +180,4 @@ go test -v ./...
 
 ## Project Status
 
-**Complete.** All 20 functional requirements implemented. 64 tests pass. Binary builds and runs. Documentation written.
+**Active development.** All 20+ functional requirements implemented. 175 tests pass. Binary builds and runs. Full documentation with keyboard reference.

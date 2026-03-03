@@ -46,7 +46,9 @@ go build -o twin-commander .
 - **Symlink-safe copy** — `CopyDir` preserves symlinks instead of following them into infinite loops
 - **Path traversal protection** — mkdir and rename reject `../../` escape attempts
 - **Recursive filename search** with real-time results (Ctrl+F)
+- **Fuzzy finder** — Ctrl+P fuzzy filename search with smart scoring (contiguous, word-boundary, prefix bonuses)
 - **Content search (grep)** — search file contents with Ctrl+/, skips binary and large files
+- **Directory size visualization** — async background calculation with caching, live-updating size column
 - **Advanced filtering** — glob patterns (`*.go`), regex (`/pattern/`), negation (`!*.tmp`), multi-term
 - **Shell command bar** — run commands with `:`, use `%f` (file), `%d` (dir), `%s` (selected files)
 - **Permissions column** — `rwxr-xr-x` display in file list, chmod dialog via menu
@@ -61,6 +63,7 @@ go build -o twin-commander .
 - **xdg-open / open** — open files with system default app with `o`
 - **Clipboard support** — copy paths with Alt+C / Opt+C (xclip/xsel/wl-copy/pbcopy)
 - **macOS-friendly** — menu hotkeys show Opt instead of Alt on macOS
+- **Workspace tabs** — Ctrl+N creates workspaces, Alt+1-9 switches, each saves full panel state
 - **Configurable** — persistent JSON config for all preferences
 - **FreeDesktop trash compliance** — creates `.trashinfo` files for desktop manager restore support
 
@@ -107,6 +110,14 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | S | Toggle sort order (ascending / descending) |
 | r | Refresh current directory |
 
+#### Workspaces
+
+| Key | Action |
+|-----|--------|
+| Ctrl+N | Create new workspace |
+| Ctrl+W | Close current workspace |
+| Alt+1-9 (Opt on Mac) | Switch to workspace by number |
+
 #### Selection
 
 | Key | Action |
@@ -124,6 +135,7 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | / | Filter mode (supports glob `*.go`, regex `/pattern/`, negation `!*.tmp`, multi-term) |
 | Ctrl+F / F3 | Recursive filename search |
 | Ctrl+/ | Content search (grep through file contents) |
+| Ctrl+P | Fuzzy finder (smart filename search) |
 
 #### File Operations
 
@@ -311,6 +323,42 @@ Press `.` to reveal dotfiles like `.git/`, `.gitignore`, `.env`. The status bar 
 
 With the preview open, press Alt+Right to give more horizontal space to the right panel. Press Alt+Down to shrink the file list and expand the preview area. Each press adjusts by 5%.
 
+### Fuzzy Finder
+
+Press `Ctrl+P` to open the fuzzy finder. Type any part of a filename to search — the fuzzy matching algorithm scores results based on:
+
+- **Contiguous character matches** (escalating bonus for consecutive matches)
+- **Word boundary matches** (bonus for matches after `/`, `.`, `_`, `-`)
+- **Filename prefix** (bonus for matching at the start of the filename)
+- **Exact case** (small bonus for matching case exactly)
+- **Path length** (shorter paths rank higher)
+
+Results update as you type (150ms debounce). Press `Tab` to toggle between the input field and results table. Press `Enter` to navigate to the selected result. Press `Esc` to close.
+
+### Directory Sizes
+
+Directory sizes are calculated asynchronously in the background. When you navigate to a directory:
+- Directories initially show `<DIR>` in the size column
+- As sizes are calculated, the column updates to show `...` (calculating) then the actual size (e.g., `4.2M`)
+- Sizes are cached and reused until a file operation invalidates the cache
+- The size includes all files recursively within the directory
+
+### Workspaces
+
+Workspaces let you maintain multiple independent browsing sessions. Each workspace saves:
+- Both panels' paths, sort mode, hidden file settings
+- View mode (tree/dual), active panel, preview state
+- Tree root path and expanded directories
+- Pane split proportions
+
+| Action | Key |
+|--------|-----|
+| Create new workspace | `Ctrl+N` |
+| Close current workspace | `Ctrl+W` |
+| Switch to workspace 1-9 | `Alt+1` through `Alt+9` |
+
+The tab bar appears between the menu bar and content area when you have more than one workspace. It auto-hides when only one workspace remains.
+
 ### Bookmarks
 
 Press `Ctrl+B` to open the bookmarks dialog. From there you can:
@@ -409,10 +457,14 @@ Entries are sorted: `..` first, then directories (alphabetical, case-insensitive
 | `scrollbar.go` | Scrollbar wrapper for text views |
 | `highlight.go` | Syntax highlighting for 14+ languages |
 | `icons.go` | Nerd Font file/directory icons |
+| `fuzzy.go` | Fuzzy filename matching and search with scoring algorithm |
+| `dirsize.go` | Async directory size calculation with thread-safe cache |
+| `workspace.go` | Workspace/tab management with full state save/restore |
+| `filehandlers.go` | File operation handlers (copy, move, delete, rename, mkdir) |
 | `external.go` | External tool integration (editor, bcomp, xdg-open, clipboard) |
 | `util.go` | Binary detection, file head reading |
 
-Test files: `entry_test.go`, `filter_test.go`, `format_test.go`, `panel_test.go`, `selection_test.go`, `history_test.go`, `permissions_test.go`, `commandbar_test.go`, `contentgrep_test.go` (123 tests).
+Test files: `entry_test.go`, `filter_test.go`, `format_test.go`, `panel_test.go`, `selection_test.go`, `history_test.go`, `permissions_test.go`, `commandbar_test.go`, `contentgrep_test.go`, `menu_test.go`, `fuzzy_test.go`, `dirsize_test.go`, `workspace_test.go`, `app_integration_test.go` (175 tests).
 
 ## Running Tests
 
@@ -420,7 +472,7 @@ Test files: `entry_test.go`, `filter_test.go`, `format_test.go`, `panel_test.go`
 go test -v ./...
 ```
 
-123 tests covering selection model, history model, permissions, command parsing, content search, panel logic, sorting, filtering, formatting, entry reading, and rendering.
+175 tests covering selection model, history model, permissions, command parsing, content search, panel logic, sorting, filtering, formatting, entry reading, rendering, menu alignment, fuzzy matching, directory size calculation, workspace management, and integration tests for key sequences.
 
 ## Building
 
