@@ -73,6 +73,7 @@ Twin Commander is a Norton Commander / Midnight Commander style dual-pane termin
 |------|---------|
 | `README.md` | Full user documentation and keyboard reference |
 | `docs/README.md` | Documentation copy |
+| `docs/USER_GUIDE.md` | Comprehensive user guide with tutorials and reference |
 | `docs/DELIVERABLES.md` | This file |
 | `docs/lint-output.txt` | Lint/diagnostic output |
 | `go.mod` | Module definition |

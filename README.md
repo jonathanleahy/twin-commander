@@ -11,6 +11,8 @@ go build -o twin-commander .
 
 Press `q` to exit.
 
+For a comprehensive walkthrough, see the [User Guide](docs/USER_GUIDE.md).
+
 ## Installation
 
 ### Prerequisites
