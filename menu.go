@@ -154,7 +154,7 @@ func (mb *MenuBar) DropdownHeight() int {
 func (mb *MenuBar) DropdownOffset() int {
 	offset := 0
 	for i := 0; i < mb.ActiveMenu && i < len(mb.Menus); i++ {
-		offset += len(mb.Menus[i].Title) + 3 // " Title "
+		offset += len(mb.Menus[i].Title) + 2 // " Title "
 	}
 	return offset
 }
@@ -163,7 +163,7 @@ func (mb *MenuBar) DropdownOffset() int {
 func (mb *MenuBar) MenuIndexAtX(x int) int {
 	offset := 0
 	for i, m := range mb.Menus {
-		width := len(m.Title) + 3 // " Title "
+		width := len(m.Title) + 2 // " Title "
 		if x >= offset && x < offset+width {
 			return i
 		}
