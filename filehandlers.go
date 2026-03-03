@@ -28,20 +28,29 @@ func (a *App) handleCopy() {
 				a.restoreFocus()
 				return
 			}
+			var errors []string
 			for _, src := range paths {
 				dst := filepath.Join(dstDir, filepath.Base(src))
 				info, err := os.Stat(src)
 				if err != nil {
+					errors = append(errors, fmt.Sprintf("%s: %v", filepath.Base(src), err))
 					continue
 				}
 				if info.IsDir() {
-					_ = CopyDir(src, dst)
+					if err := CopyDir(src, dst); err != nil {
+						errors = append(errors, fmt.Sprintf("%s: %v", filepath.Base(src), err))
+					}
 				} else {
-					_ = CopyFile(src, dst)
+					if err := CopyFile(src, dst); err != nil {
+						errors = append(errors, fmt.Sprintf("%s: %v", filepath.Base(src), err))
+					}
 				}
 			}
 			a.ActivePanel.Selection.Clear()
 			a.refreshAllPanels()
+			if len(errors) > 0 {
+				ShowErrorDialog(a.Pages, fmt.Sprintf("Copy errors (%d):\n%s", len(errors), strings.Join(errors, "\n")))
+			}
 			a.restoreFocus()
 		})
 		return
@@ -109,12 +118,18 @@ func (a *App) handleMove() {
 				a.restoreFocus()
 				return
 			}
+			var errors []string
 			for _, src := range paths {
 				dst := filepath.Join(dstDir, filepath.Base(src))
-				_ = MoveFile(src, dst)
+				if err := MoveFile(src, dst); err != nil {
+					errors = append(errors, fmt.Sprintf("%s: %v", filepath.Base(src), err))
+				}
 			}
 			a.ActivePanel.Selection.Clear()
 			a.refreshAllPanels()
+			if len(errors) > 0 {
+				ShowErrorDialog(a.Pages, fmt.Sprintf("Move errors (%d):\n%s", len(errors), strings.Join(errors, "\n")))
+			}
 			a.restoreFocus()
 		})
 		return
@@ -168,18 +183,26 @@ func (a *App) handleDelete() {
 		a.DialogActive = true
 		ShowChoiceDialog(a.Pages, "Delete", msg, []string{"Move to Trash", "Permanently Delete", "Cancel"}, func(label string) {
 			a.DialogActive = false
+			var errors []string
 			switch label {
 			case "Move to Trash":
 				for _, p := range paths {
-					_ = MoveToTrash(p)
+					if err := MoveToTrash(p); err != nil {
+						errors = append(errors, fmt.Sprintf("%s: %v", filepath.Base(p), err))
+					}
 				}
 			case "Permanently Delete":
 				for _, p := range paths {
-					_ = DeletePath(p)
+					if err := DeletePath(p); err != nil {
+						errors = append(errors, fmt.Sprintf("%s: %v", filepath.Base(p), err))
+					}
 				}
 			}
 			a.ActivePanel.Selection.Clear()
 			a.refreshAllPanels()
+			if len(errors) > 0 {
+				ShowErrorDialog(a.Pages, fmt.Sprintf("Delete errors (%d):\n%s", len(errors), strings.Join(errors, "\n")))
+			}
 			a.restoreFocus()
 		})
 		return
