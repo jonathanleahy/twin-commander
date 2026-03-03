@@ -1,0 +1,513 @@
+package main
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
+)
+
+// newTestApp creates a fully initialized App backed by the given directory,
+// suitable for feeding key events without a real terminal. Both panels point
+// to dir, the tree is rooted at dir, and the view mode is dual-pane so tests
+// can exercise left/right panel switching easily.
+func newTestApp(t *testing.T, dir string) *App {
+	t.Helper()
+
+	// Temporarily change working directory so NewApp picks it up
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chdir(origDir) })
+
+	// Override config location so tests don't pollute the real config
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	// Suppress nerd font detection
+	t.Setenv("TERM", "dumb")
+
+	app := NewApp()
+
+	// Switch to dual-pane mode for predictable left/right panel tests
+	app.ViewMode = ViewDualPane
+	app.TreeFocused = false
+	app.ActivePanel = app.LeftPanel
+	app.LeftPanel.SetActive(true)
+	app.RightPanel.SetActive(false)
+
+	// Load both panels
+	app.LeftPanel.Path = dir
+	app.LeftPanel.LoadDir()
+	app.RightPanel.Path = dir
+	app.RightPanel.LoadDir()
+	app.updateStatusBars()
+
+	return app
+}
+
+// pressKey feeds a single key event into the App's global key handler.
+// If handleKeyEvent returns a remapped event (e.g. j→Down), it is forwarded
+// to the focused widget's InputHandler, simulating what tview's event loop does.
+func pressKey(app *App, key tcell.Key, ch rune, mod tcell.ModMask) {
+	ev := tcell.NewEventKey(key, ch, mod)
+	result := app.handleKeyEvent(ev)
+	if result != nil {
+		// The event was not consumed — forward to the active widget
+		dispatchToFocusedWidget(app, result)
+	}
+}
+
+// dispatchToFocusedWidget sends a key event to the appropriate widget's InputHandler,
+// replicating what tview.Application does when an event is not consumed by InputCapture.
+func dispatchToFocusedWidget(app *App, ev *tcell.EventKey) {
+	// Determine which widget has focus
+	var handler func(event *tcell.EventKey, setFocus func(p tview.Primitive))
+	if app.MenuActive {
+		handler = app.MenuBar.Dropdown.InputHandler()
+	} else if app.ViewMode == ViewHybridTree && app.TreeFocused {
+		handler = app.TreePanel.TreeView.InputHandler()
+	} else {
+		handler = app.ActivePanel.Table.InputHandler()
+	}
+	if handler != nil {
+		handler(ev, func(p tview.Primitive) {})
+	}
+}
+
+// pressRune is a shortcut for pressing a printable rune with no modifiers.
+func pressRune(app *App, ch rune) {
+	pressKey(app, tcell.KeyRune, ch, tcell.ModNone)
+}
+
+// setupIntegrationDir creates a temp directory with a known file structure:
+//
+//	alpha/
+//	beta/
+//	file1.txt
+//	file2.go
+//	file3.md
+func setupIntegrationDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+
+	os.Mkdir(filepath.Join(dir, "alpha"), 0755)
+	os.Mkdir(filepath.Join(dir, "beta"), 0755)
+	os.WriteFile(filepath.Join(dir, "file1.txt"), []byte("hello"), 0644)
+	os.WriteFile(filepath.Join(dir, "file2.go"), []byte("package main"), 0644)
+	os.WriteFile(filepath.Join(dir, "file3.md"), []byte("# Title"), 0644)
+
+	return dir
+}
+
+// ---------- Integration Tests ----------
+
+// TestIntegration_TabSwitchesPanel verifies that Tab moves focus between panels.
+func TestIntegration_TabSwitchesPanel(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	if app.ActivePanel != app.LeftPanel {
+		t.Fatal("expected left panel active initially")
+	}
+
+	// Tab should switch to right panel
+	pressKey(app, tcell.KeyTab, 0, tcell.ModNone)
+	if app.ActivePanel != app.RightPanel {
+		t.Error("expected right panel active after Tab")
+	}
+
+	// Tab again should switch back to left panel
+	pressKey(app, tcell.KeyTab, 0, tcell.ModNone)
+	if app.ActivePanel != app.LeftPanel {
+		t.Error("expected left panel active after second Tab")
+	}
+}
+
+// TestIntegration_CursorNavigation verifies j/k move the cursor.
+func TestIntegration_CursorNavigation(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Initial position should be row 0 (..)
+	row, _ := app.ActivePanel.Table.GetSelection()
+	if row != 0 {
+		t.Fatalf("expected initial row 0, got %d", row)
+	}
+
+	// j should move down
+	pressRune(app, 'j')
+	row, _ = app.ActivePanel.Table.GetSelection()
+	if row != 1 {
+		t.Errorf("expected row 1 after 'j', got %d", row)
+	}
+
+	// j again
+	pressRune(app, 'j')
+	row, _ = app.ActivePanel.Table.GetSelection()
+	if row != 2 {
+		t.Errorf("expected row 2 after second 'j', got %d", row)
+	}
+
+	// k should move back up
+	pressRune(app, 'k')
+	row, _ = app.ActivePanel.Table.GetSelection()
+	if row != 1 {
+		t.Errorf("expected row 1 after 'k', got %d", row)
+	}
+}
+
+// TestIntegration_EnterDirectory verifies Enter/l on a directory navigates into it.
+func TestIntegration_EnterDirectory(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Move to "alpha" (row 1, after "..")
+	pressRune(app, 'j')
+	entry := app.ActivePanel.SelectedEntry()
+	if entry == nil || entry.Name != "alpha" {
+		name := ""
+		if entry != nil {
+			name = entry.Name
+		}
+		t.Fatalf("expected 'alpha' at row 1, got %q", name)
+	}
+
+	// l should navigate into alpha
+	pressRune(app, 'l')
+	expected := filepath.Join(dir, "alpha")
+	if app.ActivePanel.Path != expected {
+		t.Errorf("expected path %q after 'l', got %q", expected, app.ActivePanel.Path)
+	}
+}
+
+// TestIntegration_NavigateUp verifies h/Backspace navigates to parent.
+func TestIntegration_NavigateUp(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Navigate into alpha
+	pressRune(app, 'j') // move to alpha
+	pressRune(app, 'l') // enter alpha
+	expected := filepath.Join(dir, "alpha")
+	if app.ActivePanel.Path != expected {
+		t.Fatalf("setup: expected path %q, got %q", expected, app.ActivePanel.Path)
+	}
+
+	// h should navigate back up
+	pressRune(app, 'h')
+	if app.ActivePanel.Path != dir {
+		t.Errorf("expected path %q after 'h', got %q", dir, app.ActivePanel.Path)
+	}
+}
+
+// TestIntegration_ToggleHidden verifies . toggles hidden files.
+func TestIntegration_ToggleHidden(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	// Create a hidden file
+	os.WriteFile(filepath.Join(dir, ".hidden"), []byte("secret"), 0644)
+
+	app := newTestApp(t, dir)
+	initialCount := len(app.ActivePanel.Entries)
+
+	// Toggle hidden on
+	pressRune(app, '.')
+	if !app.ActivePanel.ShowHidden {
+		t.Error("expected ShowHidden=true after '.'")
+	}
+	afterToggle := len(app.ActivePanel.Entries)
+	if afterToggle <= initialCount {
+		t.Errorf("expected more entries with hidden shown, got %d (was %d)", afterToggle, initialCount)
+	}
+
+	// Toggle hidden off
+	pressRune(app, '.')
+	if app.ActivePanel.ShowHidden {
+		t.Error("expected ShowHidden=false after second '.'")
+	}
+}
+
+// TestIntegration_SpaceSelection verifies Space toggles file selection.
+func TestIntegration_SpaceSelection(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Move to first file (skip ".." and dirs)
+	// Entries are: .., alpha/, beta/, file1.txt, file2.go, file3.md
+	pressRune(app, 'j') // alpha
+	pressRune(app, 'j') // beta
+	pressRune(app, 'j') // file1.txt
+
+	entry := app.ActivePanel.SelectedEntry()
+	if entry == nil || entry.Name != "file1.txt" {
+		name := ""
+		if entry != nil {
+			name = entry.Name
+		}
+		t.Fatalf("expected 'file1.txt', got %q", name)
+	}
+
+	// Space should select
+	pressKey(app, tcell.KeyRune, ' ', tcell.ModNone)
+	if app.ActivePanel.Selection.Count() != 1 {
+		t.Errorf("expected 1 selected item, got %d", app.ActivePanel.Selection.Count())
+	}
+	selectedPath := filepath.Join(dir, "file1.txt")
+	if !app.ActivePanel.Selection.IsSelected(selectedPath) {
+		t.Error("file1.txt should be selected")
+	}
+}
+
+// TestIntegration_SortCycle verifies s cycles sort modes.
+func TestIntegration_SortCycle(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	if app.ActivePanel.SortMode != SortByName {
+		t.Fatalf("expected initial sort by name, got %d", app.ActivePanel.SortMode)
+	}
+
+	pressRune(app, 's')
+	if app.ActivePanel.SortMode != SortBySize {
+		t.Errorf("expected sort by size after 's', got %d", app.ActivePanel.SortMode)
+	}
+
+	pressRune(app, 's')
+	if app.ActivePanel.SortMode != SortByDate {
+		t.Errorf("expected sort by date after second 's', got %d", app.ActivePanel.SortMode)
+	}
+
+	pressRune(app, 's')
+	if app.ActivePanel.SortMode != SortByExtension {
+		t.Errorf("expected sort by extension after third 's', got %d", app.ActivePanel.SortMode)
+	}
+
+	pressRune(app, 's')
+	if app.ActivePanel.SortMode != SortByName {
+		t.Errorf("expected sort by name after fourth 's', got %d", app.ActivePanel.SortMode)
+	}
+}
+
+// TestIntegration_SortOrderToggle verifies S toggles asc/desc.
+func TestIntegration_SortOrderToggle(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	if app.ActivePanel.SortOrder != SortAsc {
+		t.Fatal("expected initial asc sort")
+	}
+
+	pressRune(app, 'S')
+	if app.ActivePanel.SortOrder != SortDesc {
+		t.Error("expected desc after 'S'")
+	}
+
+	pressRune(app, 'S')
+	if app.ActivePanel.SortOrder != SortAsc {
+		t.Error("expected asc after second 'S'")
+	}
+}
+
+// TestIntegration_JumpToTop verifies gg jumps to top.
+func TestIntegration_JumpToTop(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Move down several times
+	pressRune(app, 'j')
+	pressRune(app, 'j')
+	pressRune(app, 'j')
+	row, _ := app.ActivePanel.Table.GetSelection()
+	if row < 2 {
+		t.Fatalf("expected row >= 2, got %d", row)
+	}
+
+	// gg should jump to top
+	pressRune(app, 'g')
+	pressRune(app, 'g')
+	row, _ = app.ActivePanel.Table.GetSelection()
+	if row != 0 {
+		t.Errorf("expected row 0 after 'gg', got %d", row)
+	}
+}
+
+// TestIntegration_JumpToBottom verifies G jumps to last entry.
+func TestIntegration_JumpToBottom(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	pressRune(app, 'G')
+	row, _ := app.ActivePanel.Table.GetSelection()
+	lastRow := len(app.ActivePanel.Entries) - 1
+	if row != lastRow {
+		t.Errorf("expected row %d after 'G', got %d", lastRow, row)
+	}
+}
+
+// TestIntegration_HistoryBackForward verifies - and = navigate directory history.
+func TestIntegration_HistoryBackForward(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Navigate into alpha
+	pressRune(app, 'j') // alpha
+	pressRune(app, 'l') // enter alpha
+	alphaPath := filepath.Join(dir, "alpha")
+	if app.ActivePanel.Path != alphaPath {
+		t.Fatalf("setup: expected %q, got %q", alphaPath, app.ActivePanel.Path)
+	}
+
+	// Navigate back
+	pressRune(app, '-')
+	if app.ActivePanel.Path != dir {
+		t.Errorf("expected %q after '-', got %q", dir, app.ActivePanel.Path)
+	}
+
+	// Navigate forward
+	pressRune(app, '=')
+	if app.ActivePanel.Path != alphaPath {
+		t.Errorf("expected %q after '=', got %q", alphaPath, app.ActivePanel.Path)
+	}
+}
+
+// TestIntegration_RefreshPreservesPosition verifies r refreshes without moving cursor.
+func TestIntegration_RefreshPreservesPosition(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Move to row 2
+	pressRune(app, 'j')
+	pressRune(app, 'j')
+	row, _ := app.ActivePanel.Table.GetSelection()
+	if row != 2 {
+		t.Fatalf("expected row 2, got %d", row)
+	}
+
+	// Refresh
+	pressRune(app, 'r')
+	row, _ = app.ActivePanel.Table.GetSelection()
+	if row != 2 {
+		t.Errorf("expected row 2 after refresh, got %d", row)
+	}
+}
+
+// TestIntegration_MenuActivation verifies F9 opens the menu.
+func TestIntegration_MenuActivation(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	if app.MenuActive {
+		t.Fatal("menu should not be active initially")
+	}
+
+	pressKey(app, tcell.KeyF9, 0, tcell.ModNone)
+	if !app.MenuActive {
+		t.Error("menu should be active after F9")
+	}
+
+	// Escape should close
+	pressKey(app, tcell.KeyEscape, 0, tcell.ModNone)
+	if app.MenuActive {
+		t.Error("menu should be closed after Escape")
+	}
+}
+
+// TestIntegration_VisualSelection verifies v starts visual selection mode.
+func TestIntegration_VisualSelection(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Move to alpha
+	pressRune(app, 'j')
+
+	// Start visual selection
+	pressRune(app, 'v')
+	if !app.ActivePanel.Selection.IsVisual() {
+		t.Error("expected visual mode after 'v'")
+	}
+
+	// Move down to select range
+	pressRune(app, 'j') // beta
+	pressRune(app, 'j') // file1.txt
+
+	// Should have selected multiple items
+	count := app.ActivePanel.Selection.Count()
+	if count < 2 {
+		t.Errorf("expected at least 2 selected items in visual mode, got %d", count)
+	}
+
+	// V should end visual mode but keep selection
+	pressRune(app, 'V')
+	if app.ActivePanel.Selection.IsVisual() {
+		t.Error("expected visual mode ended after 'V'")
+	}
+	if app.ActivePanel.Selection.Count() == 0 {
+		t.Error("selection should be preserved after ending visual mode")
+	}
+}
+
+// TestIntegration_InvertSelection verifies * inverts selection.
+func TestIntegration_InvertSelection(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	initialCount := len(app.ActivePanel.Entries)
+	if app.ActivePanel.Selection.Count() != 0 {
+		t.Fatal("expected no selection initially")
+	}
+
+	// * should invert (select all except ..)
+	pressRune(app, '*')
+	inverted := app.ActivePanel.Selection.Count()
+	if inverted == 0 {
+		t.Error("expected items selected after '*'")
+	}
+	// Should skip ".." entry in selection
+	expectedSelected := initialCount - 1 // everything except ".."
+	if inverted != expectedSelected {
+		t.Errorf("expected %d selected after invert, got %d", expectedSelected, inverted)
+	}
+}
+
+// TestIntegration_DualPaneNavigationIndependent verifies panels navigate independently.
+func TestIntegration_DualPaneNavigationIndependent(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Navigate left panel into alpha
+	pressRune(app, 'j') // alpha
+	pressRune(app, 'l') // enter alpha
+	alphaPath := filepath.Join(dir, "alpha")
+	if app.LeftPanel.Path != alphaPath {
+		t.Fatalf("left panel: expected %q, got %q", alphaPath, app.LeftPanel.Path)
+	}
+
+	// Switch to right panel
+	pressKey(app, tcell.KeyTab, 0, tcell.ModNone)
+	if app.ActivePanel != app.RightPanel {
+		t.Fatal("expected right panel active")
+	}
+
+	// Right panel should still be at original dir
+	if app.RightPanel.Path != dir {
+		t.Errorf("right panel should still be at %q, got %q", dir, app.RightPanel.Path)
+	}
+
+	// Navigate right panel into beta
+	pressRune(app, 'j') // alpha
+	pressRune(app, 'j') // beta
+	pressRune(app, 'l') // enter beta
+	betaPath := filepath.Join(dir, "beta")
+	if app.RightPanel.Path != betaPath {
+		t.Errorf("right panel: expected %q, got %q", betaPath, app.RightPanel.Path)
+	}
+
+	// Left panel should be unchanged
+	if app.LeftPanel.Path != alphaPath {
+		t.Errorf("left panel should still be at %q, got %q", alphaPath, app.LeftPanel.Path)
+	}
+}
