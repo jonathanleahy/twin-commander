@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
+	"syscall"
+	"time"
 )
 
 // PathExists returns true if the path exists.
@@ -56,7 +59,15 @@ func CopyDir(src, dst string) error {
 		srcPath := filepath.Join(src, entry.Name())
 		dstPath := filepath.Join(dst, entry.Name())
 
-		if entry.IsDir() {
+		if entry.Type()&os.ModeSymlink != 0 {
+			linkTarget, err := os.Readlink(srcPath)
+			if err != nil {
+				return err
+			}
+			if err := os.Symlink(linkTarget, dstPath); err != nil {
+				return err
+			}
+		} else if entry.IsDir() {
 			if err := CopyDir(srcPath, dstPath); err != nil {
 				return err
 			}
@@ -70,8 +81,35 @@ func CopyDir(src, dst string) error {
 }
 
 // MoveFile moves a file or directory from src to dst using os.Rename.
+// Falls back to copy+remove when src and dst are on different filesystems.
 func MoveFile(src, dst string) error {
-	return os.Rename(src, dst)
+	err := os.Rename(src, dst)
+	if err == nil {
+		return nil
+	}
+
+	linkErr, ok := err.(*os.LinkError)
+	if !ok || linkErr.Err != syscall.EXDEV {
+		return err
+	}
+
+	// Cross-filesystem move: copy then remove.
+	info, statErr := os.Lstat(src)
+	if statErr != nil {
+		return statErr
+	}
+
+	if info.IsDir() {
+		if copyErr := CopyDir(src, dst); copyErr != nil {
+			return copyErr
+		}
+		return os.RemoveAll(src)
+	}
+
+	if copyErr := CopyFile(src, dst); copyErr != nil {
+		return copyErr
+	}
+	return os.Remove(src)
 }
 
 // DeletePath permanently removes a file or directory.
@@ -95,12 +133,34 @@ func MoveToTrash(path string) error {
 	dst := filepath.Join(trashDir, base)
 
 	// Handle name collisions
+	finalName := base
 	i := 1
 	for PathExists(dst) {
 		ext := filepath.Ext(base)
 		name := base[:len(base)-len(ext)]
-		dst = filepath.Join(trashDir, fmt.Sprintf("%s.%d%s", name, i, ext))
+		finalName = fmt.Sprintf("%s.%d%s", name, i, ext)
+		dst = filepath.Join(trashDir, finalName)
 		i++
+	}
+
+	// Create the .trashinfo metadata file
+	infoDir := filepath.Join(home, ".local", "share", "Trash", "info")
+	if err := os.MkdirAll(infoDir, 0o755); err != nil {
+		return fmt.Errorf("cannot create trash info directory: %w", err)
+	}
+
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return fmt.Errorf("cannot resolve absolute path: %w", err)
+	}
+
+	trashInfoPath := filepath.Join(infoDir, finalName+".trashinfo")
+	trashInfoContent := fmt.Sprintf("[Trash Info]\nPath=%s\nDeletionDate=%s\n",
+		url.PathEscape(absPath),
+		time.Now().Format("2006-01-02T15:04:05"),
+	)
+	if err := os.WriteFile(trashInfoPath, []byte(trashInfoContent), 0o644); err != nil {
+		return fmt.Errorf("cannot write trashinfo file: %w", err)
 	}
 
 	return os.Rename(path, dst)

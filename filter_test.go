@@ -98,3 +98,123 @@ func TestFilterEntries_SubstringMatch(t *testing.T) {
 		}
 	}
 }
+
+// TestFilterGlob tests glob pattern matching with *
+func TestFilterGlob(t *testing.T) {
+	entries := []FileEntry{
+		{Name: "..", IsDir: true, Accessible: true},
+		{Name: "main.go", Accessible: true},
+		{Name: "utils.go", Accessible: true},
+		{Name: "README.md", Accessible: true},
+	}
+	result := FilterEntries(entries, "*.go")
+	expected := map[string]bool{"..": true, "main.go": true, "utils.go": true}
+	if len(result) != len(expected) {
+		t.Fatalf("FilterEntries with '*.go' returned %d entries, want %d", len(result), len(expected))
+	}
+	for _, e := range result {
+		if !expected[e.Name] {
+			t.Errorf("unexpected entry %q in filtered results", e.Name)
+		}
+	}
+}
+
+// TestFilterGlob_QuestionMark tests glob pattern matching with ?
+func TestFilterGlob_QuestionMark(t *testing.T) {
+	entries := []FileEntry{
+		{Name: "..", IsDir: true, Accessible: true},
+		{Name: "a.txt", Accessible: true},
+		{Name: "ab.txt", Accessible: true},
+		{Name: "b.txt", Accessible: true},
+	}
+	result := FilterEntries(entries, "?.txt")
+	expected := map[string]bool{"..": true, "a.txt": true, "b.txt": true}
+	if len(result) != len(expected) {
+		t.Fatalf("FilterEntries with '?.txt' returned %d entries, want %d", len(result), len(expected))
+	}
+	for _, e := range result {
+		if !expected[e.Name] {
+			t.Errorf("unexpected entry %q in filtered results", e.Name)
+		}
+	}
+}
+
+// TestFilterRegex tests regex pattern matching
+func TestFilterRegex(t *testing.T) {
+	entries := []FileEntry{
+		{Name: "..", IsDir: true, Accessible: true},
+		{Name: "test_foo.go", Accessible: true},
+		{Name: "test_bar.go", Accessible: true},
+		{Name: "mytest.go", Accessible: true},
+		{Name: "README.md", Accessible: true},
+	}
+	result := FilterEntries(entries, `/^test.*\.go$/`)
+	expected := map[string]bool{"..": true, "test_foo.go": true, "test_bar.go": true}
+	if len(result) != len(expected) {
+		t.Fatalf("FilterEntries with regex returned %d entries, want %d", len(result), len(expected))
+	}
+	for _, e := range result {
+		if !expected[e.Name] {
+			t.Errorf("unexpected entry %q in filtered results", e.Name)
+		}
+	}
+}
+
+// TestFilterNegation tests negation with ! prefix
+func TestFilterNegation(t *testing.T) {
+	entries := []FileEntry{
+		{Name: "..", IsDir: true, Accessible: true},
+		{Name: "main.go", Accessible: true},
+		{Name: "temp.tmp", Accessible: true},
+		{Name: "cache.tmp", Accessible: true},
+		{Name: "README.md", Accessible: true},
+	}
+	result := FilterEntries(entries, "!*.tmp")
+	expected := map[string]bool{"..": true, "main.go": true, "README.md": true}
+	if len(result) != len(expected) {
+		t.Fatalf("FilterEntries with '!*.tmp' returned %d entries, want %d", len(result), len(expected))
+	}
+	for _, e := range result {
+		if !expected[e.Name] {
+			t.Errorf("unexpected entry %q in filtered results", e.Name)
+		}
+	}
+}
+
+// TestFilterMultiTerm tests multi-term OR matching (space-separated substring)
+func TestFilterMultiTerm(t *testing.T) {
+	entries := []FileEntry{
+		{Name: "..", IsDir: true, Accessible: true},
+		{Name: "main.go", Accessible: true},
+		{Name: "notes.txt", Accessible: true},
+		{Name: "README.md", Accessible: true},
+	}
+	result := FilterEntries(entries, "go txt")
+	expected := map[string]bool{"..": true, "main.go": true, "notes.txt": true}
+	if len(result) != len(expected) {
+		t.Fatalf("FilterEntries with 'go txt' returned %d entries, want %d", len(result), len(expected))
+	}
+	for _, e := range result {
+		if !expected[e.Name] {
+			t.Errorf("unexpected entry %q in filtered results", e.Name)
+		}
+	}
+}
+
+// TestFilterRegex_Invalid tests that invalid regex falls back to substring matching
+func TestFilterRegex_Invalid(t *testing.T) {
+	entries := []FileEntry{
+		{Name: "..", IsDir: true, Accessible: true},
+		{Name: "[invalid", Accessible: true},
+		{Name: "valid.go", Accessible: true},
+	}
+	// /[invalid/ is an invalid regex, falls back to substring match on "/[invalid/"
+	// Neither entry name contains "/[invalid/" so only ".." is returned
+	result := FilterEntries(entries, "/[invalid/")
+	if len(result) != 1 {
+		t.Fatalf("FilterEntries with invalid regex returned %d entries, want 1 (only ..)", len(result))
+	}
+	if result[0].Name != ".." {
+		t.Errorf("expected '..' entry, got %q", result[0].Name)
+	}
+}

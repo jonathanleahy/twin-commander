@@ -727,7 +727,7 @@ func TestPanel_DateColumnFormat(t *testing.T) {
 	// Find test.txt (should be at row 1, after ..)
 	for i, e := range p.Entries {
 		if e.Name == "test.txt" {
-			cell := p.Table.GetCell(i, 2)
+			cell := p.Table.GetCell(i, 3) // Date moved to column 3 (after permissions column)
 			if cell == nil {
 				t.Fatal("date cell should exist")
 			}

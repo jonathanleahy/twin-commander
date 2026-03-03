@@ -35,13 +35,21 @@ go build -o twin-commander .
 
 - **Persistent filesystem tree browser** — expand/collapse directories in-place, VS Code-style
 - **Hybrid Tree + Dual-Pane modes** — toggle with Ctrl+T
-- **Quick jump** — `~` to home, `\` to root filesystem, `Ctrl+L` go to path
+- **Quick jump** — `~` to home (preserves tree state), `\` to root (works in all modes), `Ctrl+L` go to path
+- **Directory history** — browser-style back (`-`) and forward (`=`) navigation
 - **Inline file preview** with syntax highlighting for 14+ languages
 - **Fullscreen viewer** with progressive disclosure (preview → viewer → close)
 - **Menu bar** with keyboard hotkeys (Alt+F/V/S/G/T/O) and vim-style navigation
-- **File operations** — copy, move, rename, delete (with trash support), mkdir
+- **Multi-file selection** — `Space` to toggle, `v` for visual select, `*` to invert, `+` to select by pattern
+- **File operations** — copy, move, rename, delete (with trash + .trashinfo), mkdir — all multi-select aware
+- **Cross-filesystem move** — automatic copy+delete fallback when `os.Rename` fails across devices
+- **Symlink-safe copy** — `CopyDir` preserves symlinks instead of following them into infinite loops
+- **Path traversal protection** — mkdir and rename reject `../../` escape attempts
 - **Recursive filename search** with real-time results (Ctrl+F)
-- **Type-to-filter** with case-insensitive substring matching
+- **Content search (grep)** — search file contents with Ctrl+/, skips binary and large files
+- **Advanced filtering** — glob patterns (`*.go`), regex (`/pattern/`), negation (`!*.tmp`), multi-term
+- **Shell command bar** — run commands with `:`, use `%f` (file), `%d` (dir), `%s` (selected files)
+- **Permissions column** — `rwxr-xr-x` display in file list, chmod dialog via menu
 - **Git integration** — branch display, file status colors, diff viewer, stage/unstage
 - **Directory bookmarks** — save, jump (1-9 keys), manage via Ctrl+B dialog
 - **6 color themes** — Default, Dark, Light, Solarized, Monokai, Nord
@@ -49,10 +57,12 @@ go build -o twin-commander .
 - **Resizable panes** — Alt+arrows to adjust splits (15-85% range)
 - **Nerd Font icons** for 60+ file types and directories
 - **Beyond Compare integration** — compare files across panels with `b`
-- **$EDITOR integration** — open files in your editor with `e`
+- **$EDITOR integration** — open files in your editor with `e` (respects config `editor_command`)
+- **xdg-open / open** — open files with system default app with `o`
 - **Clipboard support** — copy paths with Alt+C / Opt+C (xclip/xsel/wl-copy/pbcopy)
 - **macOS-friendly** — menu hotkeys show Opt instead of Alt on macOS
 - **Configurable** — persistent JSON config for all preferences
+- **FreeDesktop trash compliance** — creates `.trashinfo` files for desktop manager restore support
 
 ## Usage
 
@@ -76,10 +86,12 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | k / Up | Move cursor up |
 | h / Backspace | Collapse tree node / navigate to parent |
 | l / Enter | Navigate into directory / expand node / open file |
-| gg | Jump to top |
+| gg | Jump to top (works in tree mode too) |
 | G | Jump to bottom |
-| ~ | Jump to $HOME |
-| \ | Set tree root to / (full filesystem) |
+| ~ | Jump to $HOME (preserves tree expanded state) |
+| \ | Jump to / (works in both tree and dual-pane mode) |
+| - | History back |
+| = | History forward |
 | Ctrl+L | Go to path (input dialog) |
 | Tab | Cycle active pane forward |
 | Shift+Tab | Cycle active pane backward |
@@ -95,30 +107,43 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | S | Toggle sort order (ascending / descending) |
 | r | Refresh current directory |
 
+#### Selection
+
+| Key | Action |
+|-----|--------|
+| Space | Toggle select current file + move cursor down |
+| v | Start visual (range) selection |
+| V / Esc | End visual selection (keeps selection) |
+| * | Invert selection |
+| + | Select by pattern (substring match dialog) |
+
 #### Search & Filter
 
 | Key | Action |
 |-----|--------|
-| / | Enter filter mode (type-to-filter) |
+| / | Filter mode (supports glob `*.go`, regex `/pattern/`, negation `!*.tmp`, multi-term) |
 | Ctrl+F / F3 | Recursive filename search |
+| Ctrl+/ | Content search (grep through file contents) |
 
 #### File Operations
 
 | Key | Action |
 |-----|--------|
-| F5 / c | Copy selected to other pane |
-| F6 / m | Move selected to other pane |
-| F7 / n | Create new directory |
-| F8 / dd | Delete (trash or permanent) |
-| F2 / R | Rename |
-| yy | Yank (mark for copy) |
+| F5 / c | Copy to other pane (multi-select aware) |
+| F6 / m | Move to other pane (multi-select aware) |
+| F7 / n | Create new directory (path traversal protected) |
+| F8 / dd | Delete — trash or permanent (multi-select aware) |
+| F2 / R | Rename (path traversal protected) |
+| yy | Yank — mark for copy (multi-select aware) |
 | p | Paste yanked files |
 
 #### Tools
 
 | Key | Action |
 |-----|--------|
-| e | Open in $EDITOR |
+| e | Open in $EDITOR (respects config `editor_command`) |
+| o | Open with system default (xdg-open / open) |
+| : | Run shell command (`%f`=file, `%d`=dir, `%s`=selected) |
 | b | Launch Beyond Compare |
 | Ctrl+G | Git diff for selected file |
 | gs | Git stage/unstage |
@@ -245,7 +270,15 @@ Dotfiles (files starting with `.`) are hidden by default. Press `.` to toggle vi
 
 ### Filtering
 
-Press `/` to activate filter mode. Type to narrow the file list in real-time (case-insensitive substring match). Press Enter to keep the filter and return to normal mode. Press Escape to clear the filter and return to normal mode. The `..` entry is never filtered out.
+Press `/` to activate filter mode. The filter supports multiple matching modes:
+
+- **Substring** (default): `test` matches any file containing "test" (case-insensitive)
+- **Glob**: `*.go` matches files ending in `.go` (uses `filepath.Match`)
+- **Regex**: `/^test.*\.go$/` matches using Go regular expressions (wrap in `/`)
+- **Negation**: `!*.tmp` excludes matching files
+- **Multi-term**: `go txt` matches files containing "go" OR "txt"
+
+Press Enter to keep the filter and return to normal mode. Press Escape to clear the filter and return to normal mode. The `..` entry is never filtered out.
 
 ## Examples
 
@@ -350,18 +383,23 @@ Entries are sorted: `..` first, then directories (alphabetical, case-insensitive
 | File | Purpose |
 |------|---------|
 | `main.go` | Entry point |
-| `app.go` | Application controller, key handling, layout |
-| `panel.go` | File panel model and rendering |
-| `entry.go` | File entry representation and directory reading |
+| `app.go` | Application controller, key handling, layout, feature integration |
+| `panel.go` | File panel model, rendering, selection/history/permissions integration |
+| `entry.go` | File entry representation with Mode field and directory reading |
+| `selection.go` | Pure multi-file selection model (toggle, visual, invert, pattern) |
+| `history.go` | Pure browser-style directory history (back/forward) |
+| `permissions.go` | Permission formatting (`rwxr-xr-x`), octal parsing, chmod |
+| `commandbar.go` | Shell command parsing, variable expansion, execution |
+| `contentgrep.go` | Content search (grep) with binary/size skip, cancel support |
 | `sort.go` | Multi-mode sorting (name, size, date, extension) |
-| `filter.go` | Real-time case-insensitive filter |
+| `filter.go` | Advanced filtering (substring, glob, regex, negation, multi-term) |
 | `format.go` | Human-readable size formatting |
 | `viewmode.go` | View mode definitions (dual-pane, hybrid tree) |
 | `tree.go` | Persistent filesystem tree panel with expand/collapse |
 | `viewer.go` | Fullscreen file viewer with syntax highlighting |
 | `menu.go` | Menu bar with hotkeys and dropdown navigation |
 | `dialog.go` | Confirm, error, choice, and input dialogs |
-| `fileops.go` | File operations (copy, move, delete, trash, mkdir, rename) |
+| `fileops.go` | File operations (copy, move, delete, trash+trashinfo, mkdir, rename) |
 | `search.go` | Recursive filename search with cancellation |
 | `git.go` | Git status detection, diff, staging |
 | `bookmark.go` | Directory bookmarks with dialog UI |
@@ -371,10 +409,10 @@ Entries are sorted: `..` first, then directories (alphabetical, case-insensitive
 | `scrollbar.go` | Scrollbar wrapper for text views |
 | `highlight.go` | Syntax highlighting for 14+ languages |
 | `icons.go` | Nerd Font file/directory icons |
-| `external.go` | External tool integration, platform detection (editor, bcomp, clipboard) |
+| `external.go` | External tool integration (editor, bcomp, xdg-open, clipboard) |
 | `util.go` | Binary detection, file head reading |
 
-Test files: `entry_test.go`, `filter_test.go`, `format_test.go`, `panel_test.go` (64 tests).
+Test files: `entry_test.go`, `filter_test.go`, `format_test.go`, `panel_test.go`, `selection_test.go`, `history_test.go`, `permissions_test.go`, `commandbar_test.go`, `contentgrep_test.go` (123 tests).
 
 ## Running Tests
 
@@ -382,7 +420,7 @@ Test files: `entry_test.go`, `filter_test.go`, `format_test.go`, `panel_test.go`
 go test -v ./...
 ```
 
-64 tests covering panel logic, sorting, filtering, formatting, entry reading, and rendering.
+123 tests covering selection model, history model, permissions, command parsing, content search, panel logic, sorting, filtering, formatting, entry reading, and rendering.
 
 ## Building
 

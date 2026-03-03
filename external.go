@@ -42,9 +42,12 @@ func LaunchBComp(app *tview.Application, left, right string) error {
 }
 
 // OpenInEditor opens a file in the user's preferred editor.
-// Uses $EDITOR, falling back to "vi".
-func OpenInEditor(app *tview.Application, path string) error {
-	editor := os.Getenv("EDITOR")
+// Priority: editorOverride (if non-empty) → $EDITOR → "vi".
+func OpenInEditor(app *tview.Application, path string, editorOverride string) error {
+	editor := editorOverride
+	if editor == "" {
+		editor = os.Getenv("EDITOR")
+	}
 	if editor == "" {
 		editor = "vi"
 	}
@@ -58,6 +61,18 @@ func OpenInEditor(app *tview.Application, path string) error {
 		err = cmd.Run()
 	})
 	return err
+}
+
+// OpenWithDefault opens a file with the system's default application.
+// Uses xdg-open on Linux, open on macOS.
+func OpenWithDefault(path string) error {
+	var cmd *exec.Cmd
+	if IsDarwin() {
+		cmd = exec.Command("open", path)
+	} else {
+		cmd = exec.Command("xdg-open", path)
+	}
+	return cmd.Start() // Don't wait — let the app open in background
 }
 
 // CopyToClipboard copies text to the system clipboard using xclip or xsel.

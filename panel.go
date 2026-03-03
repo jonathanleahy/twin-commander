@@ -21,6 +21,8 @@ type Panel struct {
 	GitRepo             *GitRepo    // Set by App for git-aware rendering
 	ActiveBorderColor   tcell.Color // Theme-driven active border
 	InactiveBorderColor tcell.Color // Theme-driven inactive border
+	Selection           *Selection  // Multi-file selection model
+	History             *History    // Directory navigation history
 }
 
 // LoadDir reads the directory, sorts, filters, and renders entries to the Table.
@@ -106,6 +108,15 @@ func (p *Panel) renderTable() {
 			}
 		}
 
+		// Selection marker
+		if p.Selection != nil && e.Name != ".." {
+			fullPath := filepath.Join(p.Path, e.Name)
+			if p.Selection.IsSelected(fullPath) {
+				nameText = ">" + nameText
+				nameStyle = nameStyle.Background(tcell.ColorDarkGoldenrod)
+			}
+		}
+
 		// Name column
 		nameCell := tview.NewTableCell(nameText).
 			SetStyle(nameStyle).
@@ -126,6 +137,19 @@ func (p *Panel) renderTable() {
 			SetAlign(tview.AlignRight)
 		p.Table.SetCell(i, 1, sizeCell)
 
+		// Permissions column
+		var permText string
+		if e.Name == ".." {
+			permText = ""
+		} else if !e.Accessible {
+			permText = "---"
+		} else {
+			permText = FormatPermissions(e.Mode)
+		}
+		permCell := tview.NewTableCell(permText).
+			SetAlign(tview.AlignLeft)
+		p.Table.SetCell(i, 2, permCell)
+
 		// Date column
 		var dateText string
 		if e.Name == ".." {
@@ -137,7 +161,7 @@ func (p *Panel) renderTable() {
 		}
 		dateCell := tview.NewTableCell(dateText).
 			SetAlign(tview.AlignLeft)
-		p.Table.SetCell(i, 2, dateCell)
+		p.Table.SetCell(i, 3, dateCell)
 	}
 
 	p.Table.ScrollToBeginning()
@@ -164,6 +188,18 @@ func (p *Panel) updateStatusBar() {
 	if p.SortMode != SortByName || p.SortOrder != SortAsc {
 		text += fmt.Sprintf(" [%s %s]", SortModeLabel(p.SortMode), SortOrderArrow(p.SortOrder))
 	}
+	if p.Selection != nil && p.Selection.Count() > 0 {
+		// Calculate selected total size
+		var selSize int64
+		for _, path := range p.Selection.Paths() {
+			for _, e := range p.Entries {
+				if filepath.Join(p.Path, e.Name) == path && e.Accessible {
+					selSize += e.Size
+				}
+			}
+		}
+		text += fmt.Sprintf(" | %d selected (%s)", p.Selection.Count(), FormatSize(selSize))
+	}
 	p.StatusBar = text
 }
 
@@ -174,8 +210,12 @@ func (p *Panel) StatusText() string {
 
 // NavigateInto changes the panel directory to a subdirectory.
 func (p *Panel) NavigateInto(name string) {
+	oldPath := p.Path
 	p.Path = filepath.Join(p.Path, name)
 	p.Filter = ""
+	if p.History != nil {
+		p.History.Push(oldPath)
+	}
 	p.LoadDir()
 	p.Table.Select(0, 0)
 }
@@ -198,9 +238,13 @@ func (p *Panel) NavigateUp() string {
 	if p.Path == "/" {
 		return ""
 	}
+	oldPath := p.Path
 	prevName := filepath.Base(p.Path)
 	p.Path = filepath.Dir(p.Path)
 	p.Filter = ""
+	if p.History != nil {
+		p.History.Push(oldPath)
+	}
 	p.LoadDir()
 
 	// Position cursor on the previous directory

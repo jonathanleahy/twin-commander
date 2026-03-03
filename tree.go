@@ -54,7 +54,7 @@ func NewTreePanel(rootPath, startPath string) *TreePanel {
 		}
 
 		if info.IsDir() {
-			tp.toggleExpand(node, path)
+			tp.ToggleExpand(node, path)
 		} else {
 			// File selected — invoke callback
 			if tp.OnFileSelect != nil {
@@ -127,8 +127,8 @@ func (tp *TreePanel) expandNode(node *tview.TreeNode, path string) {
 	}
 }
 
-// toggleExpand collapses an expanded dir or expands a collapsed dir.
-func (tp *TreePanel) toggleExpand(node *tview.TreeNode, path string) {
+// ToggleExpand collapses an expanded dir or expands a collapsed dir.
+func (tp *TreePanel) ToggleExpand(node *tview.TreeNode, path string) {
 	if tp.expandedSet[path] {
 		// Collapse: clear children and remove from set
 		node.ClearChildren()

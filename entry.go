@@ -18,6 +18,7 @@ type FileEntry struct {
 	IsSymlink    bool
 	IsExecutable bool
 	Accessible   bool
+	Mode         os.FileMode
 }
 
 // ReadEntries reads directory contents and returns a slice of FileEntry values.
@@ -60,6 +61,7 @@ func ReadEntries(path string, showHidden bool) ([]FileEntry, error) {
 			entry.Size = targetInfo.Size()
 			entry.ModTime = targetInfo.ModTime()
 			entry.IsDir = targetInfo.IsDir()
+			entry.Mode = targetInfo.Mode()
 		} else {
 			info, infoErr := de.Info()
 			if infoErr != nil {
@@ -71,6 +73,7 @@ func ReadEntries(path string, showHidden bool) ([]FileEntry, error) {
 			entry.Size = info.Size()
 			entry.ModTime = info.ModTime()
 			entry.IsDir = info.IsDir()
+			entry.Mode = info.Mode()
 
 			// Executable detection: regular files only
 			if !info.IsDir() && info.Mode()&0111 != 0 {
