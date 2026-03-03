@@ -10,12 +10,17 @@ import (
 
 // Panel represents one side of the dual-pane file explorer.
 type Panel struct {
-	Path       string
-	Entries    []FileEntry
-	ShowHidden bool
-	Filter     string
-	Table      *tview.Table
-	StatusBar  string
+	Path                string
+	Entries             []FileEntry
+	ShowHidden          bool
+	Filter              string
+	Table               *tview.Table
+	StatusBar           string
+	SortMode            SortMode
+	SortOrder           SortOrder
+	GitRepo             *GitRepo    // Set by App for git-aware rendering
+	ActiveBorderColor   tcell.Color // Theme-driven active border
+	InactiveBorderColor tcell.Color // Theme-driven inactive border
 }
 
 // LoadDir reads the directory, sorts, filters, and renders entries to the Table.
@@ -26,7 +31,7 @@ func (p *Panel) LoadDir() {
 		return
 	}
 
-	entries = SortEntries(entries)
+	entries = SortEntriesBy(entries, p.SortMode, p.SortOrder)
 
 	// Prepend ".." if not at root
 	if p.Path != "/" {
@@ -55,25 +60,50 @@ func (p *Panel) renderTable() {
 
 		if e.Name == ".." {
 			// .. entry: blue+bold, no "/" suffix
+			nameText = iconDotDot + ".."
 			nameStyle = tcell.StyleDefault.Foreground(tcell.ColorBlue).Bold(true)
 		} else if !e.Accessible {
 			// Inaccessible: dark gray. Still add "/" suffix for dirs.
 			nameStyle = tcell.StyleDefault.Foreground(tcell.ColorDarkGray)
 			if e.IsDir {
-				nameText += "/"
+				nameText = FileIcon(e.Name, true, false, false) + e.Name + "/"
+			} else {
+				nameText = FileIcon(e.Name, false, false, false) + e.Name
 			}
 		} else if e.IsSymlink {
 			// Symlinks: purple. Add "/" suffix if target is directory.
 			nameStyle = tcell.StyleDefault.Foreground(tcell.ColorPurple)
 			if e.IsDir {
-				nameText += "/"
+				nameText = FileIcon(e.Name, false, true, false) + e.Name + "/"
+			} else {
+				nameText = FileIcon(e.Name, false, true, false) + e.Name
 			}
 		} else if e.IsDir {
 			// Regular directories: blue+bold with "/" suffix
-			nameText += "/"
+			nameText = FileIcon(e.Name, true, false, false) + e.Name + "/"
 			nameStyle = tcell.StyleDefault.Foreground(tcell.ColorBlue).Bold(true)
 		} else if e.IsExecutable {
+			nameText = FileIcon(e.Name, false, false, true) + e.Name
 			nameStyle = tcell.StyleDefault.Foreground(tcell.ColorGreen)
+		} else {
+			nameText = FileIcon(e.Name, false, false, false) + e.Name
+		}
+
+		// Overlay git status color
+		if p.GitRepo != nil && e.Name != ".." {
+			if e.IsDir {
+				relDir := p.GitRepo.RelPath(filepath.Join(p.Path, e.Name))
+				status := p.GitRepo.GetDirStatus(relDir)
+				if color, hasColor := GitStatusColor(status); hasColor {
+					nameStyle = tcell.StyleDefault.Foreground(color).Bold(true)
+				}
+			} else {
+				relPath := p.GitRepo.RelPath(filepath.Join(p.Path, e.Name))
+				status := p.GitRepo.GetFileStatus(relPath)
+				if color, hasColor := GitStatusColor(status); hasColor {
+					nameStyle = tcell.StyleDefault.Foreground(color)
+				}
+			}
 		}
 
 		// Name column
@@ -130,6 +160,9 @@ func (p *Panel) updateStatusBar() {
 	text := fmt.Sprintf("%d items, %s", count, FormatSize(totalSize))
 	if p.ShowHidden {
 		text = "[H] " + text
+	}
+	if p.SortMode != SortByName || p.SortOrder != SortAsc {
+		text += fmt.Sprintf(" [%s %s]", SortModeLabel(p.SortMode), SortOrderArrow(p.SortOrder))
 	}
 	p.StatusBar = text
 }
@@ -226,9 +259,9 @@ func (p *Panel) ClearFilter() {
 // SetActive sets the panel's border color based on active state.
 func (p *Panel) SetActive(active bool) {
 	if active {
-		p.Table.SetBorderColor(tcell.ColorAqua)
+		p.Table.SetBorderColor(p.ActiveBorderColor)
 	} else {
-		p.Table.SetBorderColor(tcell.ColorDefault)
+		p.Table.SetBorderColor(p.InactiveBorderColor)
 	}
 }
 

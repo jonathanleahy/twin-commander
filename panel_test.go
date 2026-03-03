@@ -493,8 +493,11 @@ func TestPanel_DotDotNoSlashSuffix(t *testing.T) {
 	if cell == nil {
 		t.Fatal("first cell should exist")
 	}
-	if cell.Text != ".." {
-		t.Errorf("first cell text should be '..' not %q", cell.Text)
+	if !strings.Contains(cell.Text, "..") {
+		t.Errorf("first cell text should contain '..' not %q", cell.Text)
+	}
+	if strings.HasSuffix(cell.Text, "/") {
+		t.Errorf("'..' should not end with '/', got %q", cell.Text)
 	}
 }
 
@@ -526,8 +529,8 @@ func TestPanel_DirectorySlashSuffix(t *testing.T) {
 	for i, e := range p.Entries {
 		if e.Name == "docs" {
 			cell := p.Table.GetCell(i, 0)
-			if cell.Text != "docs/" {
-				t.Errorf("directory should render as 'docs/', got %q", cell.Text)
+			if !strings.Contains(cell.Text, "docs/") {
+				t.Errorf("directory should contain 'docs/', got %q", cell.Text)
 			}
 			break
 		}
@@ -543,8 +546,11 @@ func TestPanel_FileNoSlashSuffix(t *testing.T) {
 	for i, e := range p.Entries {
 		if e.Name == "README.md" {
 			cell := p.Table.GetCell(i, 0)
-			if cell.Text != "README.md" {
-				t.Errorf("file should render as 'README.md', got %q", cell.Text)
+			if !strings.Contains(cell.Text, "README.md") {
+				t.Errorf("file should contain 'README.md', got %q", cell.Text)
+			}
+			if strings.HasSuffix(cell.Text, "/") {
+				t.Errorf("file should not end with '/', got %q", cell.Text)
 			}
 			break
 		}
@@ -563,8 +569,8 @@ func TestPanel_SymlinkToDirRendering(t *testing.T) {
 	for i, e := range p.Entries {
 		if e.Name == "linkdir" {
 			cell := p.Table.GetCell(i, 0)
-			if cell.Text != "linkdir/" {
-				t.Errorf("symlink to dir should render as 'linkdir/', got %q", cell.Text)
+			if !strings.Contains(cell.Text, "linkdir/") {
+				t.Errorf("symlink to dir should contain 'linkdir/', got %q", cell.Text)
 			}
 			if !e.IsSymlink {
 				t.Error("linkdir should be marked as symlink")
