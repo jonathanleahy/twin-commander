@@ -69,6 +69,9 @@ type App struct {
 
 	// Directory size cache
 	DirSizeCache *DirSizeCache
+
+	// Workspace management
+	WorkspaceMgr *WorkspaceManager
 }
 
 // NewApp creates and initializes the application.
@@ -84,6 +87,12 @@ func (a *App) handleKeyEvent(event *tcell.EventKey) *tcell.EventKey {
 	if event.Modifiers()&tcell.ModAlt != 0 {
 		switch event.Key() {
 		case tcell.KeyRune:
+			// Alt+1-9: switch workspace
+			if event.Rune() >= '1' && event.Rune() <= '9' {
+				idx := int(event.Rune() - '1')
+				a.switchWorkspace(idx)
+				return nil
+			}
 			// Alt+C: copy selected path to clipboard
 			if event.Rune() == 'c' || event.Rune() == 'C' {
 				a.copyPathToClipboard()
@@ -216,6 +225,12 @@ func (a *App) handleNormalModeKey(event *tcell.EventKey) *tcell.EventKey {
 		return nil
 	case tcell.KeyCtrlP:
 		a.enterFuzzyMode()
+		return nil
+	case tcell.KeyCtrlN:
+		a.createWorkspace()
+		return nil
+	case tcell.KeyCtrlW:
+		a.closeWorkspace()
 		return nil
 	case tcell.KeyCtrlL:
 		a.showGoToPathDialog()

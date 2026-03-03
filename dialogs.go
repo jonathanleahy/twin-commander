@@ -311,6 +311,11 @@ func (a *App) showKeybindingsDialog() {
   ` + mod + `+Left/Right  Adjust horizontal split
   ` + mod + `+Up/Down     Adjust vertical split
 
+[yellow]Workspaces[-]
+  Ctrl+N   New workspace
+  Ctrl+W   Close workspace
+  ` + mod + `+1-9     Switch to workspace
+
 [yellow]Menu & System[-]
   ` + mod + `+F/V/S/G/T/O  Open menu by hotkey
   F9       Open menu bar
