@@ -287,6 +287,7 @@ func (a *App) showKeybindingsDialog() {
   Ctrl+F   Recursive filename search
   F3       Recursive filename search
   Ctrl+/   Content search (grep)
+  Ctrl+P   Fuzzy finder
 
 [yellow]File Operations[-]
   F5 / c   Copy to other pane (multi-select aware)
