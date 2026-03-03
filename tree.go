@@ -330,6 +330,15 @@ func (tp *TreePanel) ToggleHidden() {
 	tp.Refresh()
 }
 
+// ExpandedPaths returns a copy of the set of expanded directory paths.
+func (tp *TreePanel) ExpandedPaths() map[string]bool {
+	result := make(map[string]bool, len(tp.expandedSet))
+	for k, v := range tp.expandedSet {
+		result[k] = v
+	}
+	return result
+}
+
 // Refresh reloads the tree preserving the expanded set.
 func (tp *TreePanel) Refresh() {
 	currentPath := tp.SelectedPath()

@@ -533,3 +533,62 @@ func TestIntegration_FuzzyModeActivation(t *testing.T) {
 		t.Error("expected fuzzy mode inactive after Escape")
 	}
 }
+
+// TestIntegration_WorkspaceCreate verifies Ctrl+N creates a new workspace.
+func TestIntegration_WorkspaceCreate(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	if app.WorkspaceMgr.Count() != 1 {
+		t.Fatalf("expected 1 workspace initially, got %d", app.WorkspaceMgr.Count())
+	}
+
+	// Ctrl+N should create a new workspace
+	pressKey(app, tcell.KeyCtrlN, 0, tcell.ModNone)
+	if app.WorkspaceMgr.Count() != 2 {
+		t.Errorf("expected 2 workspaces after Ctrl+N, got %d", app.WorkspaceMgr.Count())
+	}
+	if app.WorkspaceMgr.Active != 1 {
+		t.Errorf("expected active workspace 1, got %d", app.WorkspaceMgr.Active)
+	}
+}
+
+// TestIntegration_WorkspaceSwitchPreservesPath verifies switching workspaces preserves state.
+func TestIntegration_WorkspaceSwitchPreservesPath(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Navigate into alpha
+	pressRune(app, 'j') // alpha
+	pressRune(app, 'l') // enter alpha
+	alphaPath := filepath.Join(dir, "alpha")
+	if app.ActivePanel.Path != alphaPath {
+		t.Fatalf("setup: expected %q, got %q", alphaPath, app.ActivePanel.Path)
+	}
+
+	// Create new workspace (Ctrl+N)
+	pressKey(app, tcell.KeyCtrlN, 0, tcell.ModNone)
+
+	// New workspace should inherit the current path
+	if app.ActivePanel.Path != alphaPath {
+		t.Fatalf("new workspace should inherit path %q, got %q", alphaPath, app.ActivePanel.Path)
+	}
+
+	// Navigate to a different directory in workspace 2
+	pressRune(app, 'h') // go up to parent
+	if app.ActivePanel.Path != dir {
+		t.Fatalf("expected %q after going up, got %q", dir, app.ActivePanel.Path)
+	}
+
+	// Switch back to workspace 1 (Alt+1)
+	pressKey(app, tcell.KeyRune, '1', tcell.ModAlt)
+	if app.ActivePanel.Path != alphaPath {
+		t.Errorf("workspace 1 should still be at %q, got %q", alphaPath, app.ActivePanel.Path)
+	}
+
+	// Switch to workspace 2 (Alt+2) — should be at parent dir
+	pressKey(app, tcell.KeyRune, '2', tcell.ModAlt)
+	if app.ActivePanel.Path != dir {
+		t.Errorf("workspace 2 should be at %q, got %q", dir, app.ActivePanel.Path)
+	}
+}

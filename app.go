@@ -206,6 +206,9 @@ func NewApp() *App {
 	app.PreviewWrapper.SetTitle(" Preview ")
 	app.PreviewWrapper.SetBorderPadding(0, 0, 1, 1)
 
+	// Create workspace manager
+	app.WorkspaceMgr = NewWorkspaceManager()
+
 	// Create directory size cache
 	app.DirSizeCache = NewDirSizeCache(func(path string, size int64) {
 		app.Application.QueueUpdateDraw(func() {
@@ -359,6 +362,11 @@ func (a *App) applyThemeColors() {
 		a.PreviewWrapper.SetBorderColor(tc.PanelBorderInactive)
 	}
 
+	// Theme tab bar
+	if a.WorkspaceMgr != nil {
+		a.WorkspaceMgr.TabBar.SetBackgroundColor(tc.MenuBarBg)
+	}
+
 	// Re-apply active state borders
 	a.LeftPanel.SetActive(a.ActivePanel == a.LeftPanel)
 	a.RightPanel.SetActive(a.ActivePanel == a.RightPanel)
@@ -434,8 +442,11 @@ func (a *App) buildLayout() {
 		AddItem(rightCol, 0, 100-a.HSplit, false)
 
 	hybridRoot := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(a.MenuBar.Bar, 1, 0, false).
-		AddItem(hybridFlex, 0, 1, true).
+		AddItem(a.MenuBar.Bar, 1, 0, false)
+	if a.WorkspaceMgr != nil && a.WorkspaceMgr.Count() > 1 {
+		hybridRoot.AddItem(a.WorkspaceMgr.TabBar, 1, 0, false)
+	}
+	hybridRoot.AddItem(hybridFlex, 0, 1, true).
 		AddItem(a.FilterInput, 0, 0, false)
 
 	// Dual-pane layout: two file panels side by side
@@ -461,8 +472,11 @@ func (a *App) buildLayout() {
 		AddItem(rightCol2, 0, 100-dualHSplit, false)
 
 	a.RootFlex = tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(a.MenuBar.Bar, 1, 0, false).
-		AddItem(dualFlex, 0, 1, true).
+		AddItem(a.MenuBar.Bar, 1, 0, false)
+	if a.WorkspaceMgr != nil && a.WorkspaceMgr.Count() > 1 {
+		a.RootFlex.AddItem(a.WorkspaceMgr.TabBar, 1, 0, false)
+	}
+	a.RootFlex.AddItem(dualFlex, 0, 1, true).
 		AddItem(a.FilterInput, 0, 0, false)
 
 	// Search overlay
@@ -1236,6 +1250,8 @@ func (a *App) buildMenuBar() {
 					a.updateStatusBars()
 				}},
 				{Label: "Refresh", Shortcut: "r", Action: func() { a.refreshActive() }},
+				{Label: "New Workspace", Shortcut: "Ctrl+N", Action: func() { a.createWorkspace() }},
+				{Label: "Close Workspace", Shortcut: "Ctrl+W", Action: func() { a.closeWorkspace() }},
 			},
 		},
 		{
@@ -1455,6 +1471,153 @@ func (a *App) updateDirSizeInTable(panel *Panel, dirPath string, size int64) {
 			panel.Table.GetCell(i, 1).SetText(FormatSize(size))
 			break
 		}
+	}
+}
+
+// --- Workspace management ---
+
+// saveWorkspaceState captures the current app state into the active workspace.
+func (a *App) saveWorkspaceState() {
+	ws := a.WorkspaceMgr.Current()
+	if ws == nil {
+		return
+	}
+	ws.LeftPath = a.LeftPanel.Path
+	ws.LeftShowHidden = a.LeftPanel.ShowHidden
+	ws.LeftSortMode = a.LeftPanel.SortMode
+	ws.LeftSortOrder = a.LeftPanel.SortOrder
+	ws.RightPath = a.RightPanel.Path
+	ws.RightShowHidden = a.RightPanel.ShowHidden
+	ws.RightSortMode = a.RightPanel.SortMode
+	ws.RightSortOrder = a.RightPanel.SortOrder
+	ws.ViewMode = a.ViewMode
+	ws.TreeFocused = a.TreeFocused
+	ws.PreviewActive = a.PreviewActive
+	ws.ActiveIsLeft = (a.ActivePanel == a.LeftPanel)
+	ws.HSplit = a.HSplit
+	ws.VSplit = a.VSplit
+	ws.TreeRootPath = a.TreePanel.RootPath
+	ws.TreeExpandedPaths = a.TreePanel.ExpandedPaths()
+}
+
+// restoreWorkspaceState applies a saved workspace state to the app.
+func (a *App) restoreWorkspaceState() {
+	ws := a.WorkspaceMgr.Current()
+	if ws == nil {
+		return
+	}
+
+	// Restore panel paths and settings
+	a.LeftPanel.Path = ws.LeftPath
+	a.LeftPanel.ShowHidden = ws.LeftShowHidden
+	a.LeftPanel.SortMode = ws.LeftSortMode
+	a.LeftPanel.SortOrder = ws.LeftSortOrder
+	a.RightPanel.Path = ws.RightPath
+	a.RightPanel.ShowHidden = ws.RightShowHidden
+	a.RightPanel.SortMode = ws.RightSortMode
+	a.RightPanel.SortOrder = ws.RightSortOrder
+
+	// Restore view mode and splits
+	a.ViewMode = ws.ViewMode
+	a.TreeFocused = ws.TreeFocused
+	a.PreviewActive = ws.PreviewActive
+	a.HSplit = ws.HSplit
+	a.VSplit = ws.VSplit
+
+	// Restore tree state
+	if ws.TreeRootPath != "" {
+		a.TreePanel.SetRootPath(ws.TreeRootPath)
+		if ws.TreeExpandedPaths != nil {
+			for path := range ws.TreeExpandedPaths {
+				a.TreePanel.ExpandToPath(path)
+			}
+		}
+	}
+
+	// Reload directories
+	a.LeftPanel.LoadDir()
+	a.RightPanel.LoadDir()
+
+	// Restore active panel
+	if ws.ActiveIsLeft {
+		a.ActivePanel = a.LeftPanel
+		a.LeftPanel.SetActive(true)
+		a.RightPanel.SetActive(false)
+	} else {
+		a.ActivePanel = a.RightPanel
+		a.RightPanel.SetActive(true)
+		a.LeftPanel.SetActive(false)
+	}
+
+	// Rebuild layout and switch to correct page
+	a.buildLayout()
+	if a.ViewMode == ViewHybridTree {
+		a.Pages.SwitchToPage("hybrid")
+	} else {
+		a.Pages.SwitchToPage("dual")
+	}
+	a.restoreFocus()
+	a.updateTabBarVisibility()
+	a.updateStatusBars()
+}
+
+// switchWorkspace saves current state, switches to the target workspace, and restores.
+func (a *App) switchWorkspace(index int) {
+	if index < 0 || index >= a.WorkspaceMgr.Count() {
+		return
+	}
+	if index == a.WorkspaceMgr.Active {
+		return
+	}
+	a.saveWorkspaceState()
+	a.WorkspaceMgr.Active = index
+	a.WorkspaceMgr.renderTabBar()
+	a.restoreWorkspaceState()
+}
+
+// createWorkspace saves current state, creates a new workspace, and switches to it.
+func (a *App) createWorkspace() {
+	a.saveWorkspaceState()
+
+	// New workspace inherits current paths
+	idx := a.WorkspaceMgr.AddWorkspace("")
+	ws := a.WorkspaceMgr.Workspaces[idx]
+	ws.LeftPath = a.LeftPanel.Path
+	ws.RightPath = a.RightPanel.Path
+	ws.ViewMode = a.ViewMode
+	ws.TreeFocused = a.TreeFocused
+	ws.HSplit = a.HSplit
+	ws.VSplit = a.VSplit
+	ws.TreeRootPath = a.TreePanel.RootPath
+	ws.TreeExpandedPaths = a.TreePanel.ExpandedPaths()
+
+	a.WorkspaceMgr.Active = idx
+	a.WorkspaceMgr.renderTabBar()
+	a.updateTabBarVisibility()
+	a.updateStatusBars()
+}
+
+// closeWorkspace removes the current workspace.
+func (a *App) closeWorkspace() {
+	if a.WorkspaceMgr.Count() <= 1 {
+		a.setStatusError("Cannot close last workspace")
+		return
+	}
+	ok := a.WorkspaceMgr.RemoveWorkspace(a.WorkspaceMgr.Active)
+	if !ok {
+		return
+	}
+	a.restoreWorkspaceState()
+}
+
+// updateTabBarVisibility shows the tab bar only when there are multiple workspaces.
+func (a *App) updateTabBarVisibility() {
+	// Rebuild layout to include/exclude tab bar
+	a.buildLayout()
+	if a.ViewMode == ViewHybridTree {
+		a.Pages.SwitchToPage("hybrid")
+	} else {
+		a.Pages.SwitchToPage("dual")
 	}
 }
 
