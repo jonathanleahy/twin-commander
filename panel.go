@@ -21,8 +21,9 @@ type Panel struct {
 	GitRepo             *GitRepo    // Set by App for git-aware rendering
 	ActiveBorderColor   tcell.Color // Theme-driven active border
 	InactiveBorderColor tcell.Color // Theme-driven inactive border
-	Selection           *Selection  // Multi-file selection model
-	History             *History    // Directory navigation history
+	Selection           *Selection      // Multi-file selection model
+	History             *History        // Directory navigation history
+	DirSizeCache        *DirSizeCache   // Async directory size cache
 }
 
 // LoadDir reads the directory, sorts, filters, and renders entries to the Table.
@@ -50,6 +51,11 @@ func (p *Panel) LoadDir() {
 	p.renderTable()
 	p.updateStatusBar()
 	p.Table.SetTitle(p.Path)
+
+	// Trigger async directory size calculations
+	if p.DirSizeCache != nil {
+		p.DirSizeCache.RequestSizesForDir(p.Path, entries)
+	}
 }
 
 // renderTable draws all entries into the tview.Table.
@@ -124,12 +130,21 @@ func (p *Panel) renderTable() {
 			SetAlign(tview.AlignLeft)
 		p.Table.SetCell(i, 0, nameCell)
 
-		// Size column
+		// Size column — for directories, show cached size if available
 		var sizeText string
 		if e.Name == ".." {
 			sizeText = ""
 		} else if !e.Accessible {
 			sizeText = "---"
+		} else if e.IsDir && p.DirSizeCache != nil {
+			dirPath := filepath.Join(p.Path, e.Name)
+			if size, ok := p.DirSizeCache.Get(dirPath); ok {
+				sizeText = FormatSize(size)
+			} else if p.DirSizeCache.IsPending(dirPath) {
+				sizeText = "..."
+			} else {
+				sizeText = "<DIR>"
+			}
 		} else {
 			sizeText = FormatSize(e.Size)
 		}
