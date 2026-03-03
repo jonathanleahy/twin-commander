@@ -33,7 +33,9 @@ go build -o twin-commander .
 
 ## Features
 
+- **Persistent filesystem tree browser** — expand/collapse directories in-place, VS Code-style
 - **Hybrid Tree + Dual-Pane modes** — toggle with Ctrl+T
+- **Quick jump** — `~` to home, `\` to root filesystem, `Ctrl+L` go to path
 - **Inline file preview** with syntax highlighting for 14+ languages
 - **Fullscreen viewer** with progressive disclosure (preview → viewer → close)
 - **Menu bar** with keyboard hotkeys (Alt+F/V/S/G/T/O) and vim-style navigation
@@ -48,7 +50,8 @@ go build -o twin-commander .
 - **Nerd Font icons** for 60+ file types and directories
 - **Beyond Compare integration** — compare files across panels with `b`
 - **$EDITOR integration** — open files in your editor with `e`
-- **Clipboard support** — copy paths with Alt+C (xclip/xsel/wl-copy)
+- **Clipboard support** — copy paths with Alt+C / Opt+C (xclip/xsel/wl-copy/pbcopy)
+- **macOS-friendly** — menu hotkeys show Opt instead of Alt on macOS
 - **Configurable** — persistent JSON config for all preferences
 
 ## Usage
@@ -59,7 +62,9 @@ Twin Commander is a full-screen TUI application with no command-line flags or ar
 ./twin-commander
 ```
 
-The default view is **hybrid tree mode**: a directory tree on the left and a file panel on the right. Press `Ctrl+T` to switch to classic dual-pane mode.
+The default view is **hybrid tree mode**: a persistent directory tree on the left (rooted at `$HOME`) and a file panel on the right. The tree auto-expands to show your current working directory. Press `Ctrl+T` to switch to classic dual-pane mode.
+
+> **macOS note**: All `Alt+key` shortcuts use `Opt+key` on macOS. Menu labels update automatically.
 
 ### Keyboard Reference
 
@@ -69,10 +74,13 @@ The default view is **hybrid tree mode**: a directory tree on the left and a fil
 |-----|--------|
 | j / Down | Move cursor down |
 | k / Up | Move cursor up |
-| h / Backspace | Navigate up / collapse tree node |
-| l / Enter | Navigate into directory / open file preview |
+| h / Backspace | Collapse tree node / navigate to parent |
+| l / Enter | Navigate into directory / expand node / open file |
 | gg | Jump to top |
 | G | Jump to bottom |
+| ~ | Jump to $HOME |
+| \ | Set tree root to / (full filesystem) |
+| Ctrl+L | Go to path (input dialog) |
 | Tab | Cycle active pane forward |
 | Shift+Tab | Cycle active pane backward |
 
@@ -114,20 +122,20 @@ The default view is **hybrid tree mode**: a directory tree on the left and a fil
 | b | Launch Beyond Compare |
 | Ctrl+G | Git diff for selected file |
 | gs | Git stage/unstage |
-| Alt+C | Copy path to clipboard |
+| Alt+C (Opt+C on Mac) | Copy path to clipboard |
 
 #### Resize
 
 | Key | Action |
 |-----|--------|
-| Alt+Left/Right | Adjust horizontal split (5% per press) |
-| Alt+Up/Down | Adjust vertical split (file list vs preview) |
+| Alt+Left/Right (Opt on Mac) | Adjust horizontal split (5% per press) |
+| Alt+Up/Down (Opt on Mac) | Adjust vertical split (file list vs preview) |
 
 #### Menu & System
 
 | Key | Action |
 |-----|--------|
-| Alt+F/V/S/G/T/O | Open menu by hotkey |
+| Alt+F/V/S/G/T/O (Opt on Mac) | Open menu by hotkey |
 | F9 | Open menu bar |
 | Ctrl+B | Open bookmarks dialog |
 | 1-9 | Jump to bookmark by number |
@@ -148,7 +156,21 @@ The default view is **hybrid tree mode**: a directory tree on the left and a fil
 | t | Return from fullscreen viewer to inline preview |
 | Esc | Close viewer/preview |
 
-### Navigation
+### Tree Browsing
+
+The tree panel is a persistent hierarchy rooted at `$HOME` by default. It does not reset on every navigation:
+
+- **Enter on a directory**: expands it in-place (or collapses if already expanded)
+- **Enter on a file**: opens an inline preview (or escalates to fullscreen viewer if preview is already open)
+- **h / Backspace**: if the node is expanded, collapses it; otherwise moves the cursor to its parent
+- **~**: jumps the tree to `$HOME`
+- **\\**: re-roots the tree at `/` for full filesystem browsing
+- **Ctrl+L**: "Go to Path" dialog for direct path entry (supports `~` expansion)
+- **Bookmarks** (1-9, Ctrl+B): expand the tree to the bookmarked path rather than resetting the root
+
+This means you can have `/home/user/projects/` expanded while simultaneously browsing `/home/user/documents/` — the tree preserves all expanded state.
+
+### Navigation (Dual-Pane Mode)
 
 Navigate into a directory by selecting it and pressing Enter. Go back to the parent directory with Backspace. After going up, the cursor lands on the directory you came from.
 
@@ -234,7 +256,7 @@ $ cd ~/projects/myapp
 $ ./twin-commander
 ```
 
-Both panels show `~/projects/myapp`. Press Down to move to `src/`, press Enter to navigate in. Press Tab to switch to the right panel. Navigate to `docs/` there. Now you have source code on the left and documentation on the right.
+The tree shows your home directory with `~/projects/myapp` pre-expanded. Press Enter on `src/` to expand it — it stays expanded while you browse other directories. Press Tab to switch to the file panel on the right. Navigate to `docs/` there. The tree preserves all expanded directories, giving you a full project overview.
 
 ### Example 2: Previewing a File
 
@@ -281,10 +303,13 @@ Settings are stored in `~/.config/twin-commander/config.json`. You can edit them
   "default_sort_asc": true,
   "default_view_mode": "hybrid",
   "editor_command": "",
+  "tree_root": "home",
   "bookmarks": ["/home/user/projects", "/etc"],
   "nerd_font_dismissed": false
 }
 ```
+
+- `tree_root`: set to `"/"` to start the tree at the filesystem root instead of `$HOME`
 
 ### Git Integration
 
@@ -332,7 +357,7 @@ Entries are sorted: `..` first, then directories (alphabetical, case-insensitive
 | `filter.go` | Real-time case-insensitive filter |
 | `format.go` | Human-readable size formatting |
 | `viewmode.go` | View mode definitions (dual-pane, hybrid tree) |
-| `tree.go` | Tree panel for hybrid mode |
+| `tree.go` | Persistent filesystem tree panel with expand/collapse |
 | `viewer.go` | Fullscreen file viewer with syntax highlighting |
 | `menu.go` | Menu bar with hotkeys and dropdown navigation |
 | `dialog.go` | Confirm, error, choice, and input dialogs |
@@ -346,7 +371,7 @@ Entries are sorted: `..` first, then directories (alphabetical, case-insensitive
 | `scrollbar.go` | Scrollbar wrapper for text views |
 | `highlight.go` | Syntax highlighting for 14+ languages |
 | `icons.go` | Nerd Font file/directory icons |
-| `external.go` | External tool integration (editor, bcomp, clipboard) |
+| `external.go` | External tool integration, platform detection (editor, bcomp, clipboard) |
 | `util.go` | Binary detection, file head reading |
 
 Test files: `entry_test.go`, `filter_test.go`, `format_test.go`, `panel_test.go` (64 tests).

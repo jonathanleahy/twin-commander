@@ -18,6 +18,7 @@ type Config struct {
 	DefaultViewMode    string   `json:"default_view_mode"`
 	EditorCommand      string   `json:"editor_command"`
 	Bookmarks          []string `json:"bookmarks"`
+	TreeRoot           string   `json:"tree_root"`
 	NerdFontDismissed  bool     `json:"nerd_font_dismissed"`
 }
 
@@ -45,6 +46,7 @@ func DefaultConfig() Config {
 		DefaultSortAsc:  true,
 		DefaultViewMode: "hybrid",
 		EditorCommand:   "",
+		TreeRoot:        "home",
 	}
 }
 

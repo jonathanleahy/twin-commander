@@ -3,10 +3,24 @@ package main
 import (
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/rivo/tview"
 )
+
+// IsDarwin returns true if the current OS is macOS.
+func IsDarwin() bool {
+	return runtime.GOOS == "darwin"
+}
+
+// ModifierLabel returns "Opt" on macOS and "Alt" on Linux/Windows.
+func ModifierLabel() string {
+	if IsDarwin() {
+		return "Opt"
+	}
+	return "Alt"
+}
 
 // BCompAvailable returns true if Beyond Compare (bcomp) is in the PATH.
 func BCompAvailable() bool {
@@ -72,17 +86,58 @@ func CopyToClipboard(text string) error {
 	return exec.ErrNotFound
 }
 
-// HasNerdFont checks if a Nerd Font is installed by looking at fc-list output.
+// HasNerdFont checks if a Nerd Font is installed.
+// Uses fc-list on Linux, system_profiler on macOS.
 func HasNerdFont() bool {
+	if IsDarwin() {
+		return hasNerdFontDarwin()
+	}
+	return hasNerdFontLinux()
+}
+
+// hasNerdFontLinux checks for Nerd Fonts using fc-list.
+func hasNerdFontLinux() bool {
 	cmd := exec.Command("fc-list", ":family")
 	out, err := cmd.Output()
 	if err != nil {
 		return true // Assume yes if we can't check
 	}
-	lower := strings.ToLower(string(out))
+	return matchesNerdFont(string(out))
+}
+
+// hasNerdFontDarwin checks for Nerd Fonts on macOS using system_profiler.
+func hasNerdFontDarwin() bool {
+	cmd := exec.Command("system_profiler", "SPFontsDataType")
+	out, err := cmd.Output()
+	if err != nil {
+		return true // Assume yes if we can't check
+	}
+	return matchesNerdFont(string(out))
+}
+
+// matchesNerdFont returns true if the given text contains known Nerd Font family names.
+func matchesNerdFont(text string) bool {
+	lower := strings.ToLower(text)
 	return strings.Contains(lower, "nerd") ||
 		strings.Contains(lower, "firacode") ||
 		strings.Contains(lower, "jetbrains") ||
 		strings.Contains(lower, "hack") ||
 		strings.Contains(lower, "cascadia")
+}
+
+// NerdFontInstallHint returns platform-specific Nerd Font installation instructions.
+func NerdFontInstallHint() string {
+	if IsDarwin() {
+		return "Install via Homebrew:\n" +
+			"  brew install --cask font-fira-code-nerd-font\n\n" +
+			"Then set it as your terminal font\n" +
+			"(Terminal > Settings > Profiles > Font)."
+	}
+	return "Example (Linux):\n" +
+		"  mkdir -p ~/.local/share/fonts\n" +
+		"  cd ~/.local/share/fonts\n" +
+		"  curl -fLO https://github.com/ryanoasis/\n" +
+		"    nerd-fonts/releases/latest/download/FiraCode.zip\n" +
+		"  unzip FiraCode.zip -d FiraCode && rm FiraCode.zip\n" +
+		"  fc-cache -fv"
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -75,17 +76,57 @@ func NewApp() *App {
 	app.RightPanel = app.createPanel(cwd)
 	app.ActivePanel = app.RightPanel
 
+	// Determine tree root: $HOME by default, "/" if configured
+	home, _ := os.UserHomeDir()
+	if home == "" {
+		home = cwd
+	}
+	treeRoot := home
+
+	// Load config early to check tree_root preference
+	app.Config = LoadConfig()
+	if app.Config.TreeRoot == "/" {
+		treeRoot = "/"
+	}
+
 	// Create tree panel and viewer
-	app.TreePanel = NewTreePanel(cwd)
+	app.TreePanel = NewTreePanel(treeRoot, cwd)
 	app.Viewer = NewViewer()
+
+	// Set file select callback: Enter on a file in the tree opens preview/viewer
+	app.TreePanel.OnFileSelect = func(path string) {
+		if app.PreviewActive {
+			app.openViewer(path)
+		} else {
+			app.PreviewActive = true
+			app.buildLayout()
+			if app.ViewMode == ViewHybridTree {
+				app.Pages.SwitchToPage("hybrid")
+			} else {
+				app.Pages.SwitchToPage("dual")
+			}
+			// Sync right panel to parent dir and update preview
+			dir := filepath.Dir(path)
+			if dir != app.RightPanel.Path {
+				app.RightPanel.Path = dir
+				app.RightPanel.LoadDir()
+			}
+			// Select the file in right panel
+			baseName := filepath.Base(path)
+			for i, e := range app.RightPanel.Entries {
+				if e.Name == baseName {
+					app.RightPanel.Table.Select(i, 0)
+					break
+				}
+			}
+			app.updatePreview()
+			app.restoreFocus()
+		}
+	}
 
 	// Sync right panel when tree selection changes
 	app.TreePanel.TreeView.SetChangedFunc(func(node *tview.TreeNode) {
 		if app.ViewMode != ViewHybridTree {
-			return
-		}
-		// Skip ".." node — don't change right panel for it
-		if node.GetText() == ".." {
 			return
 		}
 		ref := node.GetReference()
@@ -93,9 +134,34 @@ func NewApp() *App {
 			return
 		}
 		path := ref.(string)
-		if path != app.RightPanel.Path {
-			app.RightPanel.Path = path
-			app.RightPanel.LoadDir()
+
+		info, err := os.Stat(path)
+		if err != nil {
+			return
+		}
+
+		if info.IsDir() {
+			// Directory selected — sync right panel to show its contents
+			if path != app.RightPanel.Path {
+				app.RightPanel.Path = path
+				app.RightPanel.LoadDir()
+				app.updateStatusBars()
+			}
+		} else {
+			// File selected — sync right panel to parent dir, highlight file
+			dir := filepath.Dir(path)
+			if dir != app.RightPanel.Path {
+				app.RightPanel.Path = dir
+				app.RightPanel.LoadDir()
+			}
+			baseName := filepath.Base(path)
+			for i, e := range app.RightPanel.Entries {
+				if e.Name == baseName {
+					app.RightPanel.Table.Select(i, 0)
+					break
+				}
+			}
+			app.updatePreview()
 			app.updateStatusBars()
 		}
 	})
@@ -164,8 +230,7 @@ func NewApp() *App {
 	// Build menu bar (before applyConfig which themes it)
 	app.buildMenuBar()
 
-	// Load config, bookmarks, and apply settings
-	app.Config = LoadConfig()
+	// Config already loaded early (for tree_root); set up bookmarks
 	app.Bookmarks = NewBookmarkManager(app.Config.Bookmarks)
 	app.applyConfig()
 
@@ -226,7 +291,7 @@ func (a *App) showBookmarks() {
 // jumpToBookmark navigates to a bookmarked directory.
 func (a *App) jumpToBookmark(path string) {
 	if a.ViewMode == ViewHybridTree {
-		a.TreePanel.SetRootPath(path)
+		a.TreePanel.NavigateToPath(path)
 		a.RightPanel.Path = path
 		a.RightPanel.LoadDir()
 	} else {
@@ -601,6 +666,9 @@ func (a *App) handleNormalModeKey(event *tcell.EventKey) *tcell.EventKey {
 	case tcell.KeyCtrlF:
 		a.enterSearchMode()
 		return nil
+	case tcell.KeyCtrlL:
+		a.showGoToPathDialog()
+		return nil
 	case tcell.KeyF3:
 		a.enterSearchMode()
 		return nil
@@ -677,6 +745,12 @@ func (a *App) handleNormalModeKey(event *tcell.EventKey) *tcell.EventKey {
 			return nil
 		case 't':
 			a.togglePreviewPane()
+			return nil
+		case '~':
+			a.jumpToHome()
+			return nil
+		case '\\':
+			a.jumpToRoot()
 			return nil
 		default:
 			// Number keys 1-9 for bookmark jumps
@@ -979,7 +1053,7 @@ func (a *App) toggleViewMode() {
 	} else {
 		a.ViewMode = ViewHybridTree
 		a.Pages.SwitchToPage("hybrid")
-		// Sync tree to left panel's path
+		// Sync tree to left panel's path (expand in-place, don't reset root)
 		a.TreePanel.NavigateToPath(a.LeftPanel.Path)
 		a.RightPanel.Path = a.LeftPanel.Path
 		a.RightPanel.LoadDir()
@@ -1144,20 +1218,105 @@ func (a *App) switchPanelReverse() {
 	}
 }
 
-// navigateUp handles Backspace in normal mode.
+// navigateUp handles Backspace/h in normal mode.
+// In tree mode: collapse expanded node, or move cursor to parent.
 func (a *App) navigateUp() {
 	if a.ViewMode == ViewHybridTree && a.TreeFocused {
-		// In tree view, navigate up from root
-		parent := filepath.Dir(a.TreePanel.RootPath)
-		if parent != a.TreePanel.RootPath {
-			a.TreePanel.SetRootPath(parent)
-			a.RightPanel.Path = parent
-			a.RightPanel.LoadDir()
+		if a.TreePanel.SelectedIsExpanded() {
+			a.TreePanel.CollapseSelected()
+		} else {
+			a.TreePanel.MoveToParent()
 		}
 	} else {
 		a.ActivePanel.NavigateUp()
 	}
 	a.updateStatusBars()
+}
+
+// jumpToHome navigates the tree to $HOME.
+func (a *App) jumpToHome() {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	if a.ViewMode == ViewHybridTree {
+		a.TreePanel.SetRootPath(home)
+		a.RightPanel.Path = home
+		a.RightPanel.LoadDir()
+	} else {
+		a.ActivePanel.Path = home
+		a.ActivePanel.LoadDir()
+	}
+	a.updateStatusBars()
+}
+
+// jumpToRoot sets the tree root to "/" (full filesystem).
+func (a *App) jumpToRoot() {
+	if a.ViewMode == ViewHybridTree {
+		currentPath := a.TreePanel.SelectedPath()
+		a.TreePanel.SetRootPath("/")
+		a.TreePanel.ExpandToPath(currentPath)
+		a.updateStatusBars()
+	}
+}
+
+// showGoToPathDialog shows an input dialog for manual path entry.
+func (a *App) showGoToPathDialog() {
+	startPath := ""
+	if a.ViewMode == ViewHybridTree && a.TreeFocused {
+		startPath = a.TreePanel.SelectedPath()
+	} else {
+		startPath = a.ActivePanel.Path
+	}
+
+	a.DialogActive = true
+	ShowInputDialog(a.Pages, a.Application, "Go to Path", "Path: ", startPath, func(value string, cancelled bool) {
+		a.DialogActive = false
+		if cancelled || value == "" {
+			a.restoreFocus()
+			return
+		}
+
+		// Expand ~ to home dir
+		if strings.HasPrefix(value, "~") {
+			home, err := os.UserHomeDir()
+			if err == nil {
+				value = filepath.Join(home, value[1:])
+			}
+		}
+
+		// Resolve to absolute path
+		absPath, err := filepath.Abs(value)
+		if err != nil {
+			a.setStatusError(fmt.Sprintf("Invalid path: %v", err))
+			a.restoreFocus()
+			return
+		}
+
+		// Check path exists
+		info, err := os.Stat(absPath)
+		if err != nil {
+			a.setStatusError(fmt.Sprintf("Path not found: %s", absPath))
+			a.restoreFocus()
+			return
+		}
+
+		target := absPath
+		if !info.IsDir() {
+			target = filepath.Dir(absPath)
+		}
+
+		if a.ViewMode == ViewHybridTree {
+			a.TreePanel.NavigateToPath(target)
+			a.RightPanel.Path = target
+			a.RightPanel.LoadDir()
+		} else {
+			a.ActivePanel.Path = target
+			a.ActivePanel.LoadDir()
+		}
+		a.updateStatusBars()
+		a.restoreFocus()
+	})
 }
 
 // handleEnter handles Enter on the selected entry.
@@ -1645,11 +1804,12 @@ func (a *App) restoreFocus() {
 
 // buildMenuBar creates the top-level menus with all available actions.
 func (a *App) buildMenuBar() {
+	mod := ModifierLabel()
 	menus := []Menu{
 		{
 			Title:  "File",
 			Hotkey: 'f',
-			Items:  []MenuItem{
+			Items: []MenuItem{
 				{Label: "New Directory", Shortcut: "F7 / n", Action: func() { a.handleMkdir() }},
 				{Label: "Copy", Shortcut: "F5 / c", Action: func() { a.handleCopy() }},
 				{Label: "Move", Shortcut: "F6 / m", Action: func() { a.handleMove() }},
@@ -1661,7 +1821,7 @@ func (a *App) buildMenuBar() {
 		{
 			Title:  "View",
 			Hotkey: 'v',
-			Items:  []MenuItem{
+			Items: []MenuItem{
 				{Label: "Toggle Tree/Dual", Shortcut: "Ctrl+T", Action: func() { a.toggleViewMode() }},
 				{Label: "Toggle Hidden Files", Shortcut: ".", Action: func() { a.toggleHidden() }},
 				{Label: "Toggle Preview Pane", Shortcut: "t", Action: func() { a.togglePreviewPane() }},
@@ -1681,7 +1841,7 @@ func (a *App) buildMenuBar() {
 		{
 			Title:  "Search",
 			Hotkey: 's',
-			Items:  []MenuItem{
+			Items: []MenuItem{
 				{Label: "Filter", Shortcut: "/", Action: func() { a.enterFilterMode() }},
 				{Label: "Recursive Search", Shortcut: "Ctrl+F / F3", Action: func() { a.enterSearchMode() }},
 			},
@@ -1689,7 +1849,10 @@ func (a *App) buildMenuBar() {
 		{
 			Title:  "Go",
 			Hotkey: 'g',
-			Items:  []MenuItem{
+			Items: []MenuItem{
+				{Label: "Go to Path...", Shortcut: "Ctrl+L", Action: func() { a.showGoToPathDialog() }},
+				{Label: "Jump to Home", Shortcut: "~", Action: func() { a.jumpToHome() }},
+				{Label: "Jump to Root /", Shortcut: "\\", Action: func() { a.jumpToRoot() }},
 				{Label: "Bookmarks...", Shortcut: "Ctrl+B", Action: func() { a.showBookmarks() }},
 				{Label: "Jump to Bookmark 1", Shortcut: "1", Action: func() { a.jumpToBookmarkNum(0) }},
 				{Label: "Jump to Bookmark 2", Shortcut: "2", Action: func() { a.jumpToBookmarkNum(1) }},
@@ -1699,7 +1862,7 @@ func (a *App) buildMenuBar() {
 		{
 			Title:  "Tools",
 			Hotkey: 't',
-			Items:  []MenuItem{
+			Items: []MenuItem{
 				{Label: "Open in Editor", Shortcut: "e", Action: func() { a.handleOpenEditor() }},
 				{Label: "View File", Shortcut: "Enter (on file)", Action: func() {
 					entry := a.ActivePanel.SelectedEntry()
@@ -1708,6 +1871,7 @@ func (a *App) buildMenuBar() {
 					}
 				}},
 				{Label: "Beyond Compare", Shortcut: "b", Action: func() { a.handleBComp() }},
+				{Label: "Copy Path", Shortcut: mod + "+C", Action: func() { a.copyPathToClipboard() }},
 				{Label: "Git Diff", Shortcut: "Ctrl+G", Action: func() { a.handleGitDiff() }},
 				{Label: "Git Stage/Unstage", Shortcut: "gs", Action: func() { a.handleGitStage() }},
 			},
@@ -1715,7 +1879,7 @@ func (a *App) buildMenuBar() {
 		{
 			Title:  "Options",
 			Hotkey: 'o',
-			Items:  []MenuItem{
+			Items: []MenuItem{
 				{Label: "Theme...", Shortcut: "", Action: func() { a.showThemeDialog() }},
 				{Label: "Configuration...", Shortcut: "", Action: func() { a.showConfigDialog() }},
 				{Label: "Key Bindings...", Shortcut: "", Action: func() { a.showKeybindingsDialog() }},
@@ -1986,13 +2150,17 @@ func (a *App) showKeybindingsDialog() {
 		a.restoreFocus()
 	}
 
+	mod := ModifierLabel()
 	text := `[yellow]Navigation[-]
   j / Down        Move cursor down
   k / Up          Move cursor up
-  h / Backspace   Navigate up / collapse tree
+  h / Backspace   Navigate up / collapse tree node
   l / Enter       Navigate into / expand / open file
   gg              Jump to top
   G               Jump to bottom
+  ~               Jump to $HOME
+  \               Set tree root to / (full filesystem)
+  Ctrl+L          Go to path...
   Tab             Switch active pane (forward)
   Shift+Tab       Switch active pane (backward)
 
@@ -2026,12 +2194,15 @@ func (a *App) showKeybindingsDialog() {
   gs       Git stage/unstage
 
 [yellow]Resize[-]
-  Alt+Left/Right  Adjust horizontal split
-  Alt+Up/Down     Adjust vertical split
+  ` + mod + `+Left/Right  Adjust horizontal split
+  ` + mod + `+Up/Down     Adjust vertical split
 
 [yellow]Menu & System[-]
-  Alt+F/V/S/G/T/O  Open menu by hotkey
+  ` + mod + `+F/V/S/G/T/O  Open menu by hotkey
   F9       Open menu bar
+  ` + mod + `+C     Copy path to clipboard
+  Ctrl+B   Bookmarks...
+  1-9      Jump to bookmark
   q        Quit
   Ctrl+C   Force quit
   Esc      Close overlay / cancel
@@ -2070,13 +2241,7 @@ func (a *App) showNerdFontWarning() {
 		"File icons require a Nerd Font to display correctly.\n" +
 		"Install one from: https://www.nerdfonts.com\n\n" +
 		"Then set it as your terminal font.\n\n" +
-		"Example (Linux):\n" +
-		"  mkdir -p ~/.local/share/fonts\n" +
-		"  cd ~/.local/share/fonts\n" +
-		"  curl -fLO https://github.com/ryanoasis/\n" +
-		"    nerd-fonts/releases/latest/download/FiraCode.zip\n" +
-		"  unzip FiraCode.zip -d FiraCode && rm FiraCode.zip\n" +
-		"  fc-cache -fv"
+		NerdFontInstallHint()
 
 	modal := tview.NewModal().
 		SetText(msg).
