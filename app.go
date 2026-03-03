@@ -206,6 +206,16 @@ func NewApp() *App {
 	app.PreviewWrapper.SetTitle(" Preview ")
 	app.PreviewWrapper.SetBorderPadding(0, 0, 1, 1)
 
+	// Create directory size cache
+	app.DirSizeCache = NewDirSizeCache(func(path string, size int64) {
+		app.Application.QueueUpdateDraw(func() {
+			app.updateDirSizeInTable(app.LeftPanel, path, size)
+			app.updateDirSizeInTable(app.RightPanel, path, size)
+		})
+	})
+	app.LeftPanel.DirSizeCache = app.DirSizeCache
+	app.RightPanel.DirSizeCache = app.DirSizeCache
+
 	// Build menu bar (before applyConfig which themes it)
 	app.buildMenuBar()
 
@@ -1137,7 +1147,9 @@ func (a *App) syncRightPanelToTree() {
 }
 
 // refreshAllPanels refreshes both file panels and the tree.
+// Also invalidates directory size cache so sizes are recalculated.
 func (a *App) refreshAllPanels() {
+	a.invalidateDirSizes()
 	a.LeftPanel.Refresh()
 	a.RightPanel.Refresh()
 	if a.ViewMode == ViewHybridTree {
@@ -1426,6 +1438,31 @@ func (a *App) updatePreview() {
 	a.PreviewWrapper.SetTitle(fmt.Sprintf(" %s ", entry.Name))
 	a.PreviewPane.SetText(highlighted)
 	a.PreviewPane.ScrollToBeginning()
+}
+
+// --- Directory size cache ---
+
+// updateDirSizeInTable updates the size column for a directory entry when its
+// size calculation completes asynchronously.
+func (a *App) updateDirSizeInTable(panel *Panel, dirPath string, size int64) {
+	dirName := filepath.Base(dirPath)
+	parentDir := filepath.Dir(dirPath)
+	if panel.Path != parentDir {
+		return
+	}
+	for i, e := range panel.Entries {
+		if e.IsDir && e.Name == dirName {
+			panel.Table.GetCell(i, 1).SetText(FormatSize(size))
+			break
+		}
+	}
+}
+
+// invalidateDirSizes clears the directory size cache after file operations.
+func (a *App) invalidateDirSizes() {
+	if a.DirSizeCache != nil {
+		a.DirSizeCache.InvalidateAll()
+	}
 }
 
 // --- Fuzzy finder ---

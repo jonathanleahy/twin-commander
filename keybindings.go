@@ -66,6 +66,9 @@ type App struct {
 	FuzzyInput  *tview.InputField
 	FuzzyTable  *tview.Table
 	FuzzyCancel chan struct{}
+
+	// Directory size cache
+	DirSizeCache *DirSizeCache
 }
 
 // NewApp creates and initializes the application.
