@@ -508,16 +508,31 @@ func (a *App) handleMouseEvent(event *tcell.EventMouse, action tview.MouseAction
 		return event, action
 	}
 
-	// Don't interfere with dialogs or menus
-	if a.DialogActive || a.MenuActive || a.ViewerActive || a.SearchMode || a.FilterMode {
+	x, y := event.Position()
+
+	// Handle clicks on menu bar (row 0) — works whether menu is open or not
+	if y == 0 {
+		idx := a.MenuBar.MenuIndexAtX(x)
+		if idx >= 0 {
+			a.activateMenuAt(idx)
+		}
 		return event, action
 	}
 
-	x, y := event.Position()
+	// When menu is open, clicking outside the dropdown closes it
+	if a.MenuActive {
+		dropX, dropY, dropW, dropH := a.MenuBar.Dropdown.GetRect()
+		if x >= dropX && x < dropX+dropW && y >= dropY && y < dropY+dropH {
+			// Click is inside dropdown — let tview handle item selection
+			return event, action
+		}
+		// Click outside menu — close it
+		a.deactivateMenuBar()
+		return event, action
+	}
 
-	// Check if click is inside the menu bar (row 0)
-	if y == 0 {
-		a.activateMenuBar()
+	// Don't interfere with dialogs or overlays
+	if a.DialogActive || a.ViewerActive || a.SearchMode || a.FilterMode {
 		return event, action
 	}
 

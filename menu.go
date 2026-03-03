@@ -158,3 +158,16 @@ func (mb *MenuBar) DropdownOffset() int {
 	}
 	return offset
 }
+
+// MenuIndexAtX returns which menu title was clicked based on x coordinate, or -1.
+func (mb *MenuBar) MenuIndexAtX(x int) int {
+	offset := 0
+	for i, m := range mb.Menus {
+		width := len(m.Title) + 3 // " Title "
+		if x >= offset && x < offset+width {
+			return i
+		}
+		offset += width
+	}
+	return -1
+}

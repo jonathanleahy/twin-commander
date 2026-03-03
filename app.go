@@ -1297,6 +1297,20 @@ func (a *App) showMenuDropdown() {
 	height := a.MenuBar.DropdownHeight()
 	offset := a.MenuBar.DropdownOffset()
 
+	// Set up mouse click handler for dropdown items
+	menuIdx := a.MenuBar.ActiveMenu
+	a.MenuBar.Dropdown.SetSelectedFunc(func(idx int, _ string, _ string, _ rune) {
+		if menuIdx >= 0 && menuIdx < len(a.MenuBar.Menus) {
+			items := a.MenuBar.Menus[menuIdx].Items
+			if idx >= 0 && idx < len(items) && !items[idx].Disabled {
+				a.deactivateMenuBar()
+				if items[idx].Action != nil {
+					items[idx].Action()
+				}
+			}
+		}
+	})
+
 	a.MenuBar.Dropdown.SetRect(offset, 1, width, height)
 	a.Pages.AddPage("menu-dropdown", a.MenuBar.Dropdown, false, true)
 	a.Application.SetFocus(a.MenuBar.Dropdown)
