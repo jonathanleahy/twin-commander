@@ -218,6 +218,10 @@ func NewApp() *App {
 	// Set up global key handler
 	app.Application.SetInputCapture(app.handleKeyEvent)
 
+	// Enable mouse support — click to focus panels, select files, open menus
+	app.Application.EnableMouse(true)
+	app.Application.SetMouseCapture(app.handleMouseEvent)
+
 	app.Application.SetRoot(app.Pages, true)
 	app.setInitialFocus()
 
@@ -1117,6 +1121,41 @@ func (a *App) restoreFocus() {
 	} else {
 		a.Application.SetFocus(a.ActivePanel.Table)
 	}
+}
+
+// focusTree switches focus to the tree panel (hybrid mode).
+func (a *App) focusTree() {
+	a.TreeFocused = true
+	a.PreviewFocused = false
+	a.TreePanel.TreeView.SetBorderColor(a.ActiveTheme.PanelBorderActive)
+	a.RightPanel.SetActive(false)
+	a.LeftPanel.SetActive(false)
+	a.PreviewWrapper.SetBorderColor(a.ActiveTheme.PanelBorderInactive)
+	a.Application.SetFocus(a.TreePanel.TreeView)
+}
+
+// focusLeftPanel switches focus to the left panel (dual-pane mode).
+func (a *App) focusLeftPanel() {
+	a.TreeFocused = false
+	a.PreviewFocused = false
+	a.ActivePanel = a.LeftPanel
+	a.LeftPanel.SetActive(true)
+	a.RightPanel.SetActive(false)
+	a.TreePanel.TreeView.SetBorderColor(a.ActiveTheme.PanelBorderInactive)
+	a.PreviewWrapper.SetBorderColor(a.ActiveTheme.PanelBorderInactive)
+	a.Application.SetFocus(a.LeftPanel.Table)
+}
+
+// focusRightPanel switches focus to the right panel.
+func (a *App) focusRightPanel() {
+	a.TreeFocused = false
+	a.PreviewFocused = false
+	a.ActivePanel = a.RightPanel
+	a.RightPanel.SetActive(true)
+	a.LeftPanel.SetActive(false)
+	a.TreePanel.TreeView.SetBorderColor(a.ActiveTheme.PanelBorderInactive)
+	a.PreviewWrapper.SetBorderColor(a.ActiveTheme.PanelBorderInactive)
+	a.Application.SetFocus(a.RightPanel.Table)
 }
 
 // buildMenuBar creates the top-level menus with all available actions.

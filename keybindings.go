@@ -496,4 +496,80 @@ func (a *App) handleMenuKey(event *tcell.EventKey) *tcell.EventKey {
 	return event
 }
 
-// showConfigDialog displays a configuration settings dialog.
+// handleMouseEvent is the global mouse capture handler.
+// It detects which panel was clicked and focuses it, while letting tview's
+// built-in widget mouse handlers manage row selection, scrolling, etc.
+func (a *App) handleMouseEvent(event *tcell.EventMouse, action tview.MouseAction) (*tcell.EventMouse, tview.MouseAction) {
+	// Only act on left clicks
+	if action != tview.MouseLeftClick && action != tview.MouseLeftDown {
+		return event, action
+	}
+
+	// Don't interfere with dialogs or menus
+	if a.DialogActive || a.MenuActive || a.ViewerActive || a.SearchMode || a.FilterMode {
+		return event, action
+	}
+
+	x, y := event.Position()
+
+	// Check if click is inside the menu bar (row 0)
+	if y == 0 {
+		a.activateMenuBar()
+		return event, action
+	}
+
+	// Determine which widget was clicked by checking bounding rects
+	if a.ViewMode == ViewHybridTree {
+		// Hybrid mode: tree panel on left, right panel on right
+		treeX, treeY, treeW, treeH := a.TreePanel.TreeView.GetRect()
+		if x >= treeX && x < treeX+treeW && y >= treeY && y < treeY+treeH {
+			if !a.TreeFocused {
+				a.focusTree()
+			}
+			return event, action
+		}
+
+		rightX, rightY, rightW, rightH := a.RightPanel.Table.GetRect()
+		if x >= rightX && x < rightX+rightW && y >= rightY && y < rightY+rightH {
+			if a.TreeFocused {
+				a.focusRightPanel()
+			}
+			return event, action
+		}
+	} else {
+		// Dual-pane mode: left panel and right panel
+		leftX, leftY, leftW, leftH := a.LeftPanel.Table.GetRect()
+		if x >= leftX && x < leftX+leftW && y >= leftY && y < leftY+leftH {
+			if a.ActivePanel != a.LeftPanel {
+				a.focusLeftPanel()
+			}
+			return event, action
+		}
+
+		rightX, rightY, rightW, rightH := a.RightPanel.Table.GetRect()
+		if x >= rightX && x < rightX+rightW && y >= rightY && y < rightY+rightH {
+			if a.ActivePanel != a.RightPanel {
+				a.focusRightPanel()
+			}
+			return event, action
+		}
+	}
+
+	// Check preview pane
+	if a.PreviewActive {
+		px, py, pw, ph := a.PreviewWrapper.GetRect()
+		if x >= px && x < px+pw && y >= py && y < py+ph {
+			if !a.PreviewFocused {
+				a.PreviewFocused = true
+				a.TreeFocused = false
+				a.LeftPanel.SetActive(false)
+				a.RightPanel.SetActive(false)
+				a.PreviewWrapper.SetBorderColor(a.ActiveTheme.PanelBorderActive)
+				a.Application.SetFocus(a.PreviewPane)
+			}
+			return event, action
+		}
+	}
+
+	return event, action
+}
