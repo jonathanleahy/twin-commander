@@ -11,6 +11,18 @@ import (
 	"github.com/rivo/tview"
 )
 
+// macOptionKeyMap maps Unicode characters produced by macOS Option+key
+// (US keyboard layout) to menu indices. On macOS Terminal.app with default
+// settings, Option+F sends 'ƒ' instead of Alt+F, etc.
+var macOptionKeyMap = map[rune]int{
+	'ƒ': 0, // Opt+F → File
+	'√': 1, // Opt+V → View
+	'ß': 2, // Opt+S → Search
+	'©': 3, // Opt+G → Go
+	'†': 4, // Opt+T → Tools
+	'ø': 5, // Opt+O → Options
+}
+
 // App is the application controller.
 type App struct {
 	Application *tview.Application
@@ -592,6 +604,20 @@ func (a *App) handleKeyEvent(event *tcell.EventKey) *tcell.EventKey {
 		}
 	}
 
+	// macOS: Option+key sends Unicode characters instead of ModAlt.
+	// Map common macOS Option+key outputs to menu hotkeys.
+	if event.Key() == tcell.KeyRune && !a.MenuActive && !a.FilterMode && !a.DialogActive {
+		if idx, ok := macOptionKeyMap[event.Rune()]; ok {
+			a.activateMenuAt(idx)
+			return nil
+		}
+		// Option+C on macOS sends 'ç'
+		if event.Rune() == 'ç' {
+			a.copyPathToClipboard()
+			return nil
+		}
+	}
+
 	if a.MenuActive {
 		return a.handleMenuKey(event)
 	}
@@ -805,7 +831,7 @@ func (a *App) handleNormalModeKey(event *tcell.EventKey) *tcell.EventKey {
 				return nil
 			}
 		}
-	case tcell.KeyF9:
+	case tcell.KeyF9, tcell.KeyF10:
 		a.activateMenuBar()
 		return nil
 	case tcell.KeyF5:
@@ -1273,6 +1299,7 @@ func (a *App) navigateUp() {
 		a.syncRightPanelToTree()
 	} else {
 		a.ActivePanel.NavigateUp()
+		a.syncTreeToRightPanel()
 	}
 	a.updateStatusBars()
 }
@@ -1297,9 +1324,10 @@ func (a *App) jumpToHome() {
 // jumpToRoot navigates to "/" (filesystem root).
 func (a *App) jumpToRoot() {
 	if a.ViewMode == ViewHybridTree {
-		currentPath := a.TreePanel.SelectedPath()
 		a.TreePanel.SetRootPath("/")
-		a.TreePanel.ExpandToPath(currentPath)
+		a.TreePanel.ExpandToPath("/")
+		a.RightPanel.Path = "/"
+		a.RightPanel.LoadDir()
 	} else {
 		a.ActivePanel.Path = "/"
 		a.ActivePanel.LoadDir()
@@ -1430,6 +1458,7 @@ func (a *App) handleEnter() {
 			filepath.Join(a.ActivePanel.Path, entry.Name)))
 		return
 	}
+	a.syncTreeToRightPanel()
 	a.updateStatusBars()
 }
 
@@ -1978,6 +2007,17 @@ func (a *App) handleOpenEditor() {
 		a.setStatusError(fmt.Sprintf("Editor error: %v", err))
 	}
 	a.refreshAllPanels()
+}
+
+// syncTreeToRightPanel updates the tree to match the right panel's current path.
+// Called after the right panel navigates (Enter, Backspace, history, etc.) so the
+// tree stays consistent with what the right panel is showing.
+func (a *App) syncTreeToRightPanel() {
+	if a.ViewMode != ViewHybridTree {
+		return
+	}
+	a.TreePanel.NavigateToPath(a.RightPanel.Path)
+	a.updateStatusBars()
 }
 
 // syncRightPanelToTree syncs the right panel to the tree's currently selected directory.
@@ -2945,7 +2985,9 @@ func copyDirProgress(src, dst string, done *int, total int, progressFn func(done
 // InactivePanel returns the panel that is NOT active (used for file operations).
 func (a *App) InactivePanel() *Panel {
 	if a.ViewMode == ViewHybridTree {
-		return a.RightPanel // In hybrid mode, right panel is always the file panel
+		// In hybrid mode, LeftPanel serves as the "other" directory for file ops.
+		// It tracks the last directory from dual-pane mode or can be set explicitly.
+		return a.LeftPanel
 	}
 	if a.ActivePanel == a.LeftPanel {
 		return a.RightPanel
