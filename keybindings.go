@@ -246,6 +246,9 @@ func (a *App) handleNormalModeKey(event *tcell.EventKey) *tcell.EventKey {
 	case tcell.KeyCtrlW:
 		a.closeWorkspace()
 		return nil
+	case tcell.KeyCtrlD:
+		a.showFileDiff()
+		return nil
 	case tcell.KeyCtrlL:
 		a.showGoToPathDialog()
 		return nil

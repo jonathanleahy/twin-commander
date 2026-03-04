@@ -713,6 +713,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | Shell Command | : |
 | Change Permissions | (menu only) |
 | Beyond Compare | b |
+| File Diff | Ctrl+D |
 | Disk Usage | D |
 | Copy Path | Alt+C |
 | Git Diff | Ctrl+G |
@@ -811,6 +812,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | `o` | Open with system default (xdg-open / open) |
 | `:` | Shell command bar |
 | `b` | Beyond Compare |
+| `Ctrl+D` | File diff (compare across panels) |
 | `D` | Disk usage (size breakdown) |
 | `Ctrl+G` | Git diff |
 | `gs` | Git stage/unstage |
