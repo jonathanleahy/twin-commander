@@ -72,6 +72,10 @@ type App struct {
 
 	// Workspace management
 	WorkspaceMgr *WorkspaceManager
+
+	// Anchor (scope lock)
+	AnchorPath   string
+	AnchorActive bool
 }
 
 // NewApp creates and initializes the application.
@@ -341,6 +345,9 @@ func (a *App) handleNormalModeKey(event *tcell.EventKey) *tcell.EventKey {
 			return nil
 		case '=':
 			a.handleHistoryForward()
+			return nil
+		case 'a':
+			a.toggleAnchor()
 			return nil
 		case 'o':
 			a.handleOpenDefault()

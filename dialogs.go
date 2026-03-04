@@ -77,6 +77,13 @@ func (a *App) showGoToPathDialog() {
 			target = filepath.Dir(absPath)
 		}
 
+		// Anchor guard: prevent navigation outside anchor scope
+		if a.AnchorActive && !a.isPathInScope(target) {
+			a.setStatusError("Path outside anchor scope")
+			a.restoreFocus()
+			return
+		}
+
 		if a.ViewMode == ViewHybridTree {
 			a.TreePanel.NavigateToPath(target)
 			a.RightPanel.Path = target
@@ -261,6 +268,7 @@ func (a *App) showKeybindingsDialog() {
   G               Jump to bottom
   ~               Jump to $HOME (preserves tree state)
   \               Jump to / (works in all modes)
+  a               Anchor (scope lock)
   -               History back
   =               History forward
   Ctrl+L          Go to path...
