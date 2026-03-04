@@ -360,6 +360,9 @@ func (a *App) handleNormalModeKey(event *tcell.EventKey) *tcell.EventKey {
 		case '+':
 			a.handleSelectionPattern()
 			return nil
+		case '%':
+			a.handleBulkRename()
+			return nil
 		case '-':
 			a.handleHistoryBack()
 			return nil

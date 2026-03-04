@@ -304,6 +304,87 @@ func (a *App) handleMkfile() {
 	})
 }
 
+// handleBulkRename renames multiple selected files using find/replace.
+func (a *App) handleBulkRename() {
+	sel := a.ActivePanel.Selection
+	if sel == nil || sel.Count() == 0 {
+		a.setStatusError("No files selected — use Space to select files first")
+		return
+	}
+
+	a.DialogActive = true
+	form := tview.NewForm()
+	form.SetBorder(true)
+	form.SetTitle(" Bulk Rename ")
+	form.SetBorderPadding(1, 1, 2, 2)
+	form.SetButtonsAlign(tview.AlignRight)
+
+	form.AddInputField("Find: ", "", 40, nil, nil)
+	form.AddInputField("Replace: ", "", 40, nil, nil)
+
+	closeDialog := func() {
+		a.DialogActive = false
+		a.Pages.RemovePage("bulk-rename")
+		a.restoreFocus()
+	}
+
+	form.AddButton("Rename", func() {
+		find := form.GetFormItemByLabel("Find: ").(*tview.InputField).GetText()
+		replace := form.GetFormItemByLabel("Replace: ").(*tview.InputField).GetText()
+		closeDialog()
+
+		if find == "" {
+			a.setStatusError("Find pattern cannot be empty")
+			return
+		}
+
+		renamed := 0
+		var lastErr error
+		for _, path := range sel.Paths() {
+			oldName := filepath.Base(path)
+			newName := strings.ReplaceAll(oldName, find, replace)
+			if newName == oldName {
+				continue
+			}
+			dir := filepath.Dir(path)
+			newPath := filepath.Join(dir, newName)
+			if err := os.Rename(path, newPath); err != nil {
+				lastErr = err
+			} else {
+				renamed++
+			}
+		}
+
+		sel.Clear()
+		a.refreshAllPanels()
+
+		if lastErr != nil {
+			a.setStatusError(fmt.Sprintf("Renamed %d files, errors: %v", renamed, lastErr))
+		} else {
+			a.setStatusError(fmt.Sprintf("Renamed %d files", renamed))
+		}
+	})
+	form.AddButton("Cancel", func() {
+		closeDialog()
+	})
+	form.SetCancelFunc(func() {
+		closeDialog()
+	})
+
+	width := 55
+	height := 12
+	overlay := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(form, height, 0, true).
+			AddItem(nil, 0, 1, false), width, 0, true).
+		AddItem(nil, 0, 1, false)
+
+	a.Pages.AddPage("bulk-rename", overlay, true, true)
+	a.Application.SetFocus(form)
+}
+
 // handleRename renames the selected entry.
 func (a *App) handleRename() {
 	entry := a.ActivePanel.SelectedEntry()

@@ -866,3 +866,30 @@ func TestIntegration_DiskUsage(t *testing.T) {
 		t.Error("expected dialog active after D")
 	}
 }
+
+// TestIntegration_BulkRenameNoSelection verifies % shows error with no selection.
+func TestIntegration_BulkRenameNoSelection(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	pressRune(app, '%')
+	// Should not open dialog — no files selected
+	if app.DialogActive {
+		t.Error("expected no dialog with no selection")
+	}
+}
+
+// TestIntegration_BulkRenameWithSelection verifies % opens dialog with selection.
+func TestIntegration_BulkRenameWithSelection(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Move to first real entry, then select with Space
+	pressRune(app, 'j')
+	pressRune(app, ' ')
+
+	pressRune(app, '%')
+	if !app.DialogActive {
+		t.Error("expected dialog active after % with selection")
+	}
+}

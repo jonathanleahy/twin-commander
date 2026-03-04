@@ -305,6 +305,7 @@ All file operations are multi-select aware. If files are selected, the operation
 | `N` | **Create** new empty file |
 | `F8` / `dd` | **Delete** (trash or permanent, configurable) |
 | `F2` / `R` | **Rename** current file/directory |
+| `%` | **Bulk rename** — find/replace in selected filenames |
 | `yy` | **Yank** — mark for copy (vim-style) |
 | `p` | **Paste** yanked files |
 
@@ -664,6 +665,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | Copy | F5 / c |
 | Move | F6 / m |
 | Rename | F2 / R |
+| Bulk Rename | % |
 | Delete | F8 / dd |
 | Quit | q / Ctrl+C |
 
@@ -802,6 +804,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | `N` | Create new empty file |
 | `F8` / `dd` | Delete (trash or permanent) |
 | `F2` / `R` | Rename |
+| `%` | Bulk rename (find/replace) |
 | `yy` | Yank (mark for copy) |
 | `p` | Paste yanked files |
 
