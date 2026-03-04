@@ -62,6 +62,7 @@ go build -o twin-commander .
 - **Resizable panes** — Alt+arrows to adjust splits (15-85% range)
 - **Nerd Font icons** for 60+ file types and directories
 - **Beyond Compare integration** — compare files across panels with `b`
+- **Archive peek** — press Enter on .zip/.tar.gz/.tar.bz2/.tar files to view contents without extracting
 - **$EDITOR integration** — open files in your editor with `e` (respects config `editor_command`)
 - **xdg-open / open** — open files with system default app with `o`
 - **Clipboard support** — copy paths with Alt+C / Opt+C (xclip/xsel/wl-copy/pbcopy)
@@ -96,7 +97,7 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | j / Down | Move cursor down |
 | k / Up | Move cursor up |
 | h / Backspace | Collapse tree node / navigate to parent |
-| l / Enter | Navigate into directory / expand node / open file |
+| l / Enter | Navigate into directory / expand node / open file / peek archive |
 | gg | Jump to top (works in tree mode too) |
 | G | Jump to bottom |
 | ~ | Jump to $HOME (preserves tree expanded state) |

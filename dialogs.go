@@ -267,7 +267,7 @@ func (a *App) showKeybindingsDialog() {
   j / Down        Move cursor down
   k / Up          Move cursor up
   h / Backspace   Navigate up / collapse tree node
-  l / Enter       Navigate into / expand / open file
+  l / Enter       Navigate into / open file / peek archive
   gg              Jump to top
   G               Jump to bottom
   ~               Jump to $HOME (preserves tree state)
