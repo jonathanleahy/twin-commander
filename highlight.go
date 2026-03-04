@@ -70,6 +70,9 @@ func DetectHighlight(path string) HighlightMode {
 	return HighlightNone
 }
 
+// ActiveSyntaxTheme is the currently active syntax theme for highlighting.
+var ActiveSyntaxTheme = GetSyntaxTheme("Default")
+
 // HighlightContent applies tview color tags to source code for the given mode.
 // This is a lightweight highlighter — keywords and comments only.
 func HighlightContent(content string, mode HighlightMode) string {
@@ -91,16 +94,18 @@ func HighlightContent(content string, mode HighlightMode) string {
 func highlightLine(line string, mode HighlightMode) string {
 	trimmed := strings.TrimSpace(line)
 
+	t := ActiveSyntaxTheme
+
 	// Diff highlighting
 	if mode == HighlightDiff {
 		if strings.HasPrefix(trimmed, "+") && !strings.HasPrefix(trimmed, "+++") {
-			return "[green]" + tviewEscape(line) + "[-]"
+			return "[" + t.Added + "]" + tviewEscape(line) + "[-]"
 		}
 		if strings.HasPrefix(trimmed, "-") && !strings.HasPrefix(trimmed, "---") {
-			return "[red]" + tviewEscape(line) + "[-]"
+			return "[" + t.Removed + "]" + tviewEscape(line) + "[-]"
 		}
 		if strings.HasPrefix(trimmed, "@@") {
-			return "[cyan]" + tviewEscape(line) + "[-]"
+			return "[" + t.Meta + "]" + tviewEscape(line) + "[-]"
 		}
 		return tviewEscape(line)
 	}
@@ -109,41 +114,41 @@ func highlightLine(line string, mode HighlightMode) string {
 	switch mode {
 	case HighlightGo, HighlightJS, HighlightRust, HighlightC, HighlightCSS, HighlightSQL:
 		if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
-			return "[gray]" + tviewEscape(line) + "[-]"
+			return "[" + t.Comment + "]" + tviewEscape(line) + "[-]"
 		}
 	case HighlightPython, HighlightShell, HighlightYAML:
 		if strings.HasPrefix(trimmed, "#") {
-			return "[gray]" + tviewEscape(line) + "[-]"
+			return "[" + t.Comment + "]" + tviewEscape(line) + "[-]"
 		}
 	case HighlightHTML:
 		if strings.HasPrefix(trimmed, "<!--") {
-			return "[gray]" + tviewEscape(line) + "[-]"
+			return "[" + t.Comment + "]" + tviewEscape(line) + "[-]"
 		}
 	case HighlightMarkdown:
 		if strings.HasPrefix(trimmed, "#") {
-			return "[yellow::b]" + tviewEscape(line) + "[-::-]"
+			return "[" + t.Heading + "]" + tviewEscape(line) + "[-::-]"
 		}
 		if strings.HasPrefix(trimmed, "```") {
-			return "[cyan]" + tviewEscape(line) + "[-]"
+			return "[" + t.Meta + "]" + tviewEscape(line) + "[-]"
 		}
 		if strings.HasPrefix(trimmed, ">") {
-			return "[gray]" + tviewEscape(line) + "[-]"
+			return "[" + t.Comment + "]" + tviewEscape(line) + "[-]"
 		}
 		if strings.HasPrefix(trimmed, "- ") || strings.HasPrefix(trimmed, "* ") {
-			return "[green]" + tviewEscape(line) + "[-]"
+			return "[" + t.List + "]" + tviewEscape(line) + "[-]"
 		}
 	}
 
 	// Keyword highlighting for programming languages
 	if mode == HighlightGo || mode == HighlightJS || mode == HighlightRust ||
 		mode == HighlightC || mode == HighlightPython {
-		return highlightKeywords(line, mode)
+		return highlightKeywords(line, mode, t)
 	}
 
 	// JSON: highlight keys
 	if mode == HighlightJSON {
 		if strings.Contains(trimmed, ":") {
-			return highlightJSONLine(line)
+			return highlightJSONLine(line, t)
 		}
 	}
 
@@ -151,7 +156,7 @@ func highlightLine(line string, mode HighlightMode) string {
 }
 
 // highlightKeywords applies keyword coloring to a line.
-func highlightKeywords(line string, mode HighlightMode) string {
+func highlightKeywords(line string, mode HighlightMode, t SyntaxTheme) string {
 	var keywords []string
 	switch mode {
 	case HighlightGo:
@@ -180,7 +185,7 @@ func highlightKeywords(line string, mode HighlightMode) string {
 
 	// Simple word boundary replacement — only color standalone keywords
 	for _, kw := range keywords {
-		escaped = highlightWord(escaped, kw, "[blue]", "[-]")
+		escaped = highlightWord(escaped, kw, "["+t.Keyword+"]", "[-]")
 	}
 
 	return escaped
@@ -217,14 +222,14 @@ func isIdentChar(r rune) bool {
 }
 
 // highlightJSONLine applies simple JSON key highlighting.
-func highlightJSONLine(line string) string {
+func highlightJSONLine(line string, t SyntaxTheme) string {
 	escaped := tviewEscape(line)
 	// Find quoted keys before ":"
 	if idx := strings.Index(escaped, ":"); idx > 0 {
 		// Look for the key portion (everything before the colon, including quotes)
 		keyPart := escaped[:idx]
 		valuePart := escaped[idx:]
-		return fmt.Sprintf("[yellow]%s[-]%s", keyPart, valuePart)
+		return fmt.Sprintf("[%s]%s[-]%s", t.JSONKey, keyPart, valuePart)
 	}
 	return escaped
 }

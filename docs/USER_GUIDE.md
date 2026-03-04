@@ -197,6 +197,10 @@ Both panels automatically refresh when files are created, modified, or deleted o
 
 Press `W` to toggle flatten mode. This recursively lists all files in the current directory and its subdirectories as a flat list, showing relative paths (e.g., `src/main.go`). Useful for finding files deep in a directory tree. Limited to 10,000 entries. The panel title shows `[FLAT]` when active. Press `W` again to return to normal view.
 
+### Syntax Themes
+
+Press `T` to open the syntax highlighting theme picker. Choose from 6 themes: Default, Monokai, Dracula, Solarized, GitHub, and Nord. The selected theme changes keyword, comment, and string colors in the preview pane.
+
 ### Resizing Panes
 
 | Key | Action |
@@ -784,6 +788,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | `s` | Cycle sort mode (name / size / date / extension) |
 | `S` | Toggle sort order (ascending / descending) |
 | `W` | Toggle flatten (recursive file list) |
+| `T` | Syntax highlighting theme picker |
 | `r` | Refresh current directory |
 
 ### Workspaces

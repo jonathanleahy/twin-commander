@@ -126,6 +126,7 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | s | Cycle sort mode (name / size / date / extension) |
 | S | Toggle sort order (ascending / descending) |
 | W | Toggle flatten (show all files recursively) |
+| T | Syntax highlighting theme picker |
 | r | Refresh current directory |
 
 #### Workspaces
