@@ -55,7 +55,7 @@ go build -o twin-commander .
 - **Advanced filtering** — glob patterns (`*.go`), regex (`/pattern/`), negation (`!*.tmp`), multi-term
 - **Shell command bar** — run commands with `:`, use `%f` (file), `%d` (dir), `%s` (selected files)
 - **Permissions column** — `rwxr-xr-x` display in file list, chmod dialog via menu
-- **Git integration** — branch display, file status colors, diff viewer, stage/unstage
+- **Git integration** — branch display, file status colors, git status column (M/A/D/?), diff viewer, stage/unstage
 - **Directory bookmarks** — save, jump (1-9 keys), manage via Ctrl+B dialog
 - **6 color themes** — Default, Dark, Light, Solarized, Monokai, Nord
 - **Vim-style keys** — j/k/h/l navigation, gg/G jumps, dd delete, yy yank, p paste
