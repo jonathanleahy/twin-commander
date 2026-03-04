@@ -82,3 +82,22 @@ func (h *History) CanGoBack() bool {
 func (h *History) CanGoForward() bool {
 	return len(h.fwd) > 0
 }
+
+// Recent returns the most recently visited directories (newest first),
+// deduplicated, up to max entries.
+func (h *History) Recent(max int) []string {
+	seen := make(map[string]bool)
+	var result []string
+	// Walk the stack from newest to oldest
+	for i := len(h.stack) - 1; i >= 0; i-- {
+		dir := h.stack[i]
+		if !seen[dir] {
+			seen[dir] = true
+			result = append(result, dir)
+			if len(result) >= max {
+				break
+			}
+		}
+	}
+	return result
+}

@@ -820,3 +820,23 @@ func TestIntegration_MkfileCreatesFile(t *testing.T) {
 		t.Fatal("expected dialog active after N")
 	}
 }
+
+// TestIntegration_RecentDirs verifies gr opens the recent directories dialog.
+func TestIntegration_RecentDirs(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Navigate into alpha to build some history
+	pressRune(app, 'j') // alpha
+	pressRune(app, 'l') // enter alpha
+
+	// Navigate back
+	pressRune(app, 'h')
+
+	// Now press gr to open recent dirs
+	pressRune(app, 'g')
+	pressRune(app, 'r')
+	if !app.DialogActive {
+		t.Error("expected dialog active after gr")
+	}
+}

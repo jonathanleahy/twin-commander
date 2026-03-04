@@ -276,6 +276,7 @@ func (a *App) showKeybindingsDialog() {
   =               History forward
   Ctrl+L          Go to path...
   gd              Directory jump (fuzzy)
+  gr              Recent directories
   Tab             Switch active pane (forward)
   Shift+Tab       Switch active pane (backward)
 
@@ -446,6 +447,106 @@ Beyond Compare, $EDITOR Integration.
 
 	a.Pages.AddPage("about-dialog", overlay, true, true)
 	a.Application.SetFocus(tv)
+}
+
+// showRecentDirs displays a list of recently visited directories.
+func (a *App) showRecentDirs() {
+	panel := a.ActivePanel
+	if a.ViewMode == ViewHybridTree {
+		panel = a.RightPanel
+	}
+	if panel.History == nil {
+		return
+	}
+
+	dirs := panel.History.Recent(20)
+	if len(dirs) == 0 {
+		a.setStatusError("No recent directories")
+		return
+	}
+
+	a.DialogActive = true
+	list := tview.NewList()
+	list.SetBorder(true)
+	list.SetTitle(" Recent Directories ")
+	list.SetBorderPadding(0, 0, 1, 1)
+	list.SetHighlightFullLine(true)
+	list.SetSecondaryTextColor(tcell.ColorGray)
+
+	for i, dir := range dirs {
+		shortcut := rune(0)
+		if i < 9 {
+			shortcut = rune('1' + i)
+		}
+		list.AddItem(dir, "", shortcut, nil)
+	}
+
+	closeDialog := func() {
+		a.DialogActive = false
+		a.Pages.RemovePage("recent-dirs")
+		a.restoreFocus()
+	}
+
+	navigateTo := func(idx int) {
+		if idx < 0 || idx >= len(dirs) {
+			closeDialog()
+			return
+		}
+		target := dirs[idx]
+		closeDialog()
+		if a.AnchorActive && !a.isPathInScope(target) {
+			a.setStatusError("Path outside anchor scope")
+			return
+		}
+		if a.ViewMode == ViewHybridTree {
+			a.TreePanel.NavigateToPath(target)
+			a.RightPanel.Path = target
+			a.RightPanel.LoadDir()
+		} else {
+			a.ActivePanel.Path = target
+			a.ActivePanel.LoadDir()
+		}
+		a.updateStatusBars()
+	}
+
+	list.SetSelectedFunc(func(idx int, _ string, _ string, _ rune) {
+		navigateTo(idx)
+	})
+
+	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEscape:
+			closeDialog()
+			return nil
+		case tcell.KeyRune:
+			switch event.Rune() {
+			case 'j':
+				return tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone)
+			case 'k':
+				return tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
+			case 'q':
+				closeDialog()
+				return nil
+			}
+		}
+		return event
+	})
+
+	height := len(dirs) + 4
+	if height > 24 {
+		height = 24
+	}
+	width := 60
+	overlay := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(list, height, 0, true).
+			AddItem(nil, 0, 1, false), width, 0, true).
+		AddItem(nil, 0, 1, false)
+
+	a.Pages.AddPage("recent-dirs", overlay, true, true)
+	a.Application.SetFocus(list)
 }
 
 // togglePreviewPane toggles the inline preview pane on/off.

@@ -1418,6 +1418,7 @@ func (a *App) buildMenuBar() {
 				{Label: "Anchor", Shortcut: "a", Action: func() { a.toggleAnchor() }},
 				{Label: "Go to Path...", Shortcut: "Ctrl+L", Action: func() { a.showGoToPathDialog() }},
 				{Label: "Directory Jump", Shortcut: "gd", Action: func() { a.enterGoDirMode() }},
+				{Label: "Recent Dirs", Shortcut: "gr", Action: func() { a.showRecentDirs() }},
 				{Label: "Jump to Home", Shortcut: "~", Action: func() { a.jumpToHome() }},
 				{Label: "Jump to Root /", Shortcut: "\\", Action: func() { a.jumpToRoot() }},
 				{Label: "History Back", Shortcut: "-", Action: func() { a.handleHistoryBack() }},

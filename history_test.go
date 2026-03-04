@@ -142,3 +142,43 @@ func TestHistory_ForwardAtEmpty(t *testing.T) {
 		t.Errorf("Forward on empty history should return empty string, got %q", dir)
 	}
 }
+
+func TestHistory_Recent(t *testing.T) {
+	h := NewHistory(100)
+	h.Push("/a")
+	h.Push("/b")
+	h.Push("/c")
+	h.Push("/a") // duplicate
+	h.Push("/d")
+
+	recent := h.Recent(10)
+	if len(recent) != 4 {
+		t.Fatalf("expected 4 recent dirs, got %d: %v", len(recent), recent)
+	}
+	// Newest first, deduplicated
+	expected := []string{"/d", "/a", "/c", "/b"}
+	for i, exp := range expected {
+		if recent[i] != exp {
+			t.Errorf("recent[%d] = %q, want %q", i, recent[i], exp)
+		}
+	}
+}
+
+func TestHistory_RecentMax(t *testing.T) {
+	h := NewHistory(100)
+	for i := 0; i < 30; i++ {
+		h.Push(string(rune('a' + i)))
+	}
+	recent := h.Recent(5)
+	if len(recent) != 5 {
+		t.Fatalf("expected 5 recent dirs, got %d", len(recent))
+	}
+}
+
+func TestHistory_RecentEmpty(t *testing.T) {
+	h := NewHistory(100)
+	recent := h.Recent(10)
+	if len(recent) != 0 {
+		t.Fatalf("expected 0 recent dirs, got %d", len(recent))
+	}
+}
