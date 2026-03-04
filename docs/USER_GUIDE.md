@@ -301,6 +301,7 @@ All file operations are multi-select aware. If files are selected, the operation
 | `F5` / `c` | **Copy** to other pane |
 | `F6` / `m` | **Move** to other pane |
 | `F7` / `n` | **Create** new directory |
+| `N` | **Create** new empty file |
 | `F8` / `dd` | **Delete** (trash or permanent, configurable) |
 | `F2` / `R` | **Rename** current file/directory |
 | `yy` | **Yank** — mark for copy (vim-style) |
@@ -657,6 +658,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | Item | Shortcut |
 |------|----------|
 | New Directory | F7 / n |
+| New File | N |
 | Copy | F5 / c |
 | Move | F6 / m |
 | Rename | F2 / R |
@@ -791,6 +793,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | `F5` / `c` | Copy to other pane |
 | `F6` / `m` | Move to other pane |
 | `F7` / `n` | Create new directory |
+| `N` | Create new empty file |
 | `F8` / `dd` | Delete (trash or permanent) |
 | `F2` / `R` | Rename |
 | `yy` | Yank (mark for copy) |

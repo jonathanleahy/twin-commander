@@ -318,6 +318,9 @@ func (a *App) handleNormalModeKey(event *tcell.EventKey) *tcell.EventKey {
 		case 'n':
 			a.handleMkdir()
 			return nil
+		case 'N':
+			a.handleMkfile()
+			return nil
 		case 'R':
 			a.handleRename()
 			return nil
