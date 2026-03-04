@@ -1426,6 +1426,7 @@ func (a *App) buildMenuBar() {
 				{Label: "Toggle Tree/Dual", Shortcut: "Ctrl+T", Action: func() { a.toggleViewMode() }},
 				{Label: "Toggle Hidden Files", Shortcut: ".", Action: func() { a.toggleHidden() }},
 				{Label: "Toggle Preview Pane", Shortcut: "t", Action: func() { a.togglePreviewPane() }},
+				{Label: "Toggle Flatten", Shortcut: "W", Action: func() { a.toggleFlattenMode() }},
 				{Label: "Cycle Sort Mode", Shortcut: "s", Action: func() {
 					a.ActivePanel.SortMode = NextSortMode(a.ActivePanel.SortMode)
 					a.ActivePanel.Refresh()
@@ -1568,6 +1569,16 @@ func (a *App) deactivateMenuBar() {
 	a.MenuBar.renderBar()
 	a.Pages.RemovePage("menu-dropdown")
 	a.restoreFocus()
+}
+
+func (a *App) toggleFlattenMode() {
+	a.ActivePanel.FlattenMode = !a.ActivePanel.FlattenMode
+	a.ActivePanel.LoadDir()
+	if a.ActivePanel.FlattenMode {
+		a.setStatusError("Flatten mode ON — showing all files recursively")
+	} else {
+		a.setStatusError("Flatten mode OFF")
+	}
 }
 
 func (a *App) togglePreviewPane() {

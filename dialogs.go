@@ -289,6 +289,7 @@ func (a *App) showKeybindingsDialog() {
   .        Toggle hidden files
   s        Cycle sort mode (name/size/date/ext)
   S        Toggle sort order (asc/desc)
+  W        Toggle flatten (recursive file list)
   r        Refresh
 
 [yellow]Selection[-]

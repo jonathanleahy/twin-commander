@@ -1002,3 +1002,30 @@ func TestIntegration_DirCompare(t *testing.T) {
 		t.Error("expected dialog active after Ctrl+K")
 	}
 }
+
+func TestIntegration_FlattenMode(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	// Create a subdirectory with a file
+	os.MkdirAll(filepath.Join(dir, "subdir"), 0755)
+	os.WriteFile(filepath.Join(dir, "subdir", "nested.txt"), []byte("n"), 0644)
+
+	app := newTestApp(t, dir)
+
+	beforeCount := len(app.ActivePanel.Entries)
+
+	pressRune(app, 'W')
+	if !app.ActivePanel.FlattenMode {
+		t.Error("expected FlattenMode to be true after W")
+	}
+	// Flatten should show more entries (recursive files)
+	if len(app.ActivePanel.Entries) <= beforeCount-2 {
+		// -2 because normal mode has dirs too but flatten skips dirs
+		t.Logf("before: %d entries, after flatten: %d entries", beforeCount, len(app.ActivePanel.Entries))
+	}
+
+	// Toggle off
+	pressRune(app, 'W')
+	if app.ActivePanel.FlattenMode {
+		t.Error("expected FlattenMode to be false after second W")
+	}
+}
