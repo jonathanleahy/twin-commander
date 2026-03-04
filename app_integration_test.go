@@ -840,3 +840,14 @@ func TestIntegration_RecentDirs(t *testing.T) {
 		t.Error("expected dialog active after gr")
 	}
 }
+
+// TestIntegration_DiskUsage verifies D opens the disk usage dialog.
+func TestIntegration_DiskUsage(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	pressRune(app, 'D')
+	if !app.DialogActive {
+		t.Error("expected dialog active after D")
+	}
+}

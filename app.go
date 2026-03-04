@@ -1444,6 +1444,7 @@ func (a *App) buildMenuBar() {
 				{Label: "Shell Command", Shortcut: ":", Action: func() { a.enterCommandMode() }},
 				{Label: "Change Permissions", Shortcut: "", Action: func() { a.handleChmod() }},
 				{Label: "Beyond Compare", Shortcut: "b", Action: func() { a.handleBComp() }},
+				{Label: "Disk Usage", Shortcut: "D", Action: func() { a.showDiskUsage() }},
 				{Label: "Copy Path", Shortcut: mod + "+C", Action: func() { a.copyPathToClipboard() }},
 				{Label: "Git Diff", Shortcut: "Ctrl+G", Action: func() { a.handleGitDiff() }},
 				{Label: "Git Stage/Unstage", Shortcut: "gs", Action: func() { a.handleGitStage() }},

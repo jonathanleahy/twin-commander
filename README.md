@@ -169,6 +169,7 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | o | Open with system default (xdg-open / open) |
 | : | Run shell command (`%f`=file, `%d`=dir, `%s`=selected) |
 | b | Launch Beyond Compare |
+| D | Disk usage (size breakdown of subdirectories) |
 | Ctrl+G | Git diff for selected file |
 | gs | Git stage/unstage |
 | Alt+C (Opt+C on Mac) | Copy path to clipboard |
