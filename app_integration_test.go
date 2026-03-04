@@ -893,3 +893,27 @@ func TestIntegration_BulkRenameWithSelection(t *testing.T) {
 		t.Error("expected dialog active after % with selection")
 	}
 }
+
+func TestIntegration_SymlinkCreate(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Move to first real entry (skip "..")
+	pressRune(app, 'j')
+
+	pressRune(app, 'L')
+	if !app.DialogActive {
+		t.Error("expected dialog active after L")
+	}
+}
+
+func TestIntegration_SymlinkOnDotDot(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Cursor is on ".." — L should do nothing
+	pressRune(app, 'L')
+	if app.DialogActive {
+		t.Error("expected no dialog when cursor is on ..")
+	}
+}

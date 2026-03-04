@@ -304,6 +304,45 @@ func (a *App) handleMkfile() {
 	})
 }
 
+// handleSymlink creates a symbolic link to the selected entry.
+func (a *App) handleSymlink() {
+	entry := a.ActivePanel.SelectedEntry()
+	if entry == nil || entry.Name == ".." {
+		return
+	}
+	target := filepath.Join(a.ActivePanel.Path, entry.Name)
+
+	a.DialogActive = true
+	ShowInputDialog(a.Pages, a.Application, "Create Symlink", "Link name: ", entry.Name+".link", func(value string, cancelled bool) {
+		a.DialogActive = false
+		if cancelled || value == "" {
+			a.restoreFocus()
+			return
+		}
+		linkPath := filepath.Join(a.ActivePanel.Path, value)
+		// Path traversal validation
+		absPath, _ := filepath.Abs(linkPath)
+		absParent, _ := filepath.Abs(a.ActivePanel.Path)
+		if !strings.HasPrefix(absPath, absParent+string(filepath.Separator)) && absPath != absParent {
+			a.setStatusError("Path traversal not allowed")
+			a.restoreFocus()
+			return
+		}
+		// Check if link name already exists
+		if _, err := os.Lstat(linkPath); err == nil {
+			a.setStatusError(fmt.Sprintf("Already exists: %s", value))
+			a.restoreFocus()
+			return
+		}
+		err := os.Symlink(target, linkPath)
+		if err != nil {
+			ShowErrorDialog(a.Pages, fmt.Sprintf("Symlink failed: %v", err))
+		}
+		a.refreshAllPanels()
+		a.restoreFocus()
+	})
+}
+
 // handleBulkRename renames multiple selected files using find/replace.
 func (a *App) handleBulkRename() {
 	sel := a.ActivePanel.Selection

@@ -311,6 +311,7 @@ func (a *App) showKeybindingsDialog() {
   F8 / d   Delete (trash or permanent, multi-select)
   F2 / R   Rename
   %%        Bulk rename (find/replace in selected filenames)
+  L        Create symlink to selected entry
   yy       Yank (mark for copy, multi-select)
   p        Paste yanked files
   dd       Delete (vim-style)
