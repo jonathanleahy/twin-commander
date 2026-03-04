@@ -65,17 +65,22 @@ go build -o twin-commander .
 - **xdg-open / open** — open files with system default app with `o`
 - **Clipboard support** — copy paths with Alt+C / Opt+C (xclip/xsel/wl-copy/pbcopy)
 - **macOS-friendly** — menu hotkeys show Opt instead of Alt on macOS
+- **Anchor (scope lock)** — press `a` to lock searches and navigation to a subtree, press `a` again to release
 - **Workspace tabs** — Ctrl+N creates workspaces, Alt+1-9 switches, each saves full panel state
+- **Session persistence** — workspaces, paths, anchor state, and view settings restored across sessions
 - **Configurable** — persistent JSON config for all preferences
 - **FreeDesktop trash compliance** — creates `.trashinfo` files for desktop manager restore support
 
 ## Usage
 
-Twin Commander is a full-screen TUI application with no command-line flags or arguments. Launch it from any directory:
+Launch Twin Commander from any directory. Optionally pass a starting directory as a CLI argument:
 
 ```bash
-./twin-commander
+./twin-commander              # starts in current directory
+./twin-commander ~/projects   # starts in ~/projects
 ```
+
+Session state (workspaces, paths, view mode, anchor) is automatically saved to `~/.config/twin-commander/session.json` and restored on next launch.
 
 The default view is **hybrid tree mode**: a persistent directory tree on the left (rooted at `$HOME`) and a file panel on the right. The tree auto-expands to show your current working directory. Press `Ctrl+T` to switch to classic dual-pane mode.
 
@@ -463,11 +468,12 @@ Entries are sorted: `..` first, then directories (alphabetical, case-insensitive
 | `fuzzy.go` | Fuzzy filename matching and search with scoring algorithm |
 | `dirsize.go` | Async directory size calculation with thread-safe cache |
 | `workspace.go` | Workspace/tab management with full state save/restore |
+| `session.go` | Session persistence — save/restore workspaces across launches |
 | `filehandlers.go` | File operation handlers (copy, move, delete, rename, mkdir) |
 | `external.go` | External tool integration (editor, bcomp, xdg-open, clipboard) |
 | `util.go` | Binary detection, file head reading |
 
-Test files: `entry_test.go`, `filter_test.go`, `format_test.go`, `panel_test.go`, `selection_test.go`, `history_test.go`, `permissions_test.go`, `commandbar_test.go`, `contentgrep_test.go`, `menu_test.go`, `fuzzy_test.go`, `dirsize_test.go`, `workspace_test.go`, `app_integration_test.go` (175 tests).
+Test files: `entry_test.go`, `filter_test.go`, `format_test.go`, `panel_test.go`, `selection_test.go`, `history_test.go`, `permissions_test.go`, `commandbar_test.go`, `contentgrep_test.go`, `menu_test.go`, `fuzzy_test.go`, `dirsize_test.go`, `workspace_test.go`, `session_test.go`, `app_integration_test.go` (191 tests).
 
 ## Running Tests
 
@@ -475,7 +481,7 @@ Test files: `entry_test.go`, `filter_test.go`, `format_test.go`, `panel_test.go`
 go test -v ./...
 ```
 
-175 tests covering selection model, history model, permissions, command parsing, content search, panel logic, sorting, filtering, formatting, entry reading, rendering, menu alignment, fuzzy matching, directory size calculation, workspace management, and integration tests for key sequences.
+191 tests covering selection model, history model, permissions, command parsing, content search, panel logic, sorting, filtering, formatting, entry reading, rendering, menu alignment, fuzzy matching, directory size calculation, workspace management, session persistence, anchor scope lock, and integration tests for key sequences.
 
 ## Building
 
