@@ -331,6 +331,7 @@ func (a *App) showKeybindingsDialog() {
   :        Run shell command (%f=file, %d=dir, %s=selected)
   Ctrl+G   Git diff
   gs       Git stage/unstage
+  Ctrl+U   Duplicate finder (scan for duplicate files)
   Ctrl+V   Paste files from system clipboard
 
 [yellow]Resize[-]
@@ -1136,6 +1137,44 @@ func (a *App) showSyntaxThemeDialog() {
 
 	a.Pages.AddPage("syntax-theme", overlay, true, true)
 	a.Application.SetFocus(list)
+}
+
+// showDuplicateFinder scans the current directory for duplicate files.
+func (a *App) showDuplicateFinder() {
+	root := a.ActivePanel.Path
+	groups := FindDuplicates(root, a.ActivePanel.ShowHidden)
+	text := FormatDuplicates(groups, root)
+
+	tv := tview.NewTextView().
+		SetDynamicColors(true).
+		SetText(text)
+	tv.SetBorder(true).
+		SetTitle(" Duplicate Finder ").
+		SetBorderPadding(1, 1, 2, 2)
+
+	a.DialogActive = true
+	tv.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape || event.Rune() == 'q' {
+			a.DialogActive = false
+			a.Pages.RemovePage("dup-finder")
+			a.restoreFocus()
+			return nil
+		}
+		return event
+	})
+
+	height := 22
+	width := 75
+	overlay := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(tv, height, 0, true).
+			AddItem(nil, 0, 1, false), width, 0, true).
+		AddItem(nil, 0, 1, false)
+
+	a.Pages.AddPage("dup-finder", overlay, true, true)
+	a.Application.SetFocus(tv)
 }
 
 // showDirCompare compares left and right panel directories and shows differences.

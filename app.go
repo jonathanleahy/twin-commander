@@ -1491,6 +1491,7 @@ func (a *App) buildMenuBar() {
 				{Label: "File Diff", Shortcut: "Ctrl+D", Action: func() { a.showFileDiff() }},
 				{Label: "Dir Compare", Shortcut: "Ctrl+K", Action: func() { a.showDirCompare() }},
 				{Label: "Disk Usage", Shortcut: "D", Action: func() { a.showDiskUsage() }},
+				{Label: "Duplicate Finder", Shortcut: "Ctrl+U", Action: func() { a.showDuplicateFinder() }},
 				{Label: "File Info", Shortcut: "i", Action: func() { a.showFileInfo() }},
 				{Label: "Copy Path", Shortcut: mod + "+C", Action: func() { a.copyPathToClipboard() }},
 				{Label: "Paste from Clipboard", Shortcut: "Ctrl+V", Action: func() { a.handleClipboardPaste() }},
