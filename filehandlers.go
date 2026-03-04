@@ -271,7 +271,39 @@ func (a *App) handleMkdir() {
 	})
 }
 
-// handleRename renames the selected entry.
+// handleMkfile creates a new empty file in the active panel directory.
+func (a *App) handleMkfile() {
+	a.DialogActive = true
+	ShowInputDialog(a.Pages, a.Application, "New File", "Name: ", "", func(value string, cancelled bool) {
+		a.DialogActive = false
+		if cancelled || value == "" {
+			a.restoreFocus()
+			return
+		}
+		path := filepath.Join(a.ActivePanel.Path, value)
+		// Path traversal validation
+		absPath, _ := filepath.Abs(path)
+		absParent, _ := filepath.Abs(a.ActivePanel.Path)
+		if !strings.HasPrefix(absPath, absParent+string(filepath.Separator)) && absPath != absParent {
+			a.setStatusError("Path traversal not allowed")
+			a.restoreFocus()
+			return
+		}
+		// Check if file already exists
+		if _, err := os.Stat(path); err == nil {
+			a.setStatusError(fmt.Sprintf("File already exists: %s", value))
+			a.restoreFocus()
+			return
+		}
+		err := os.WriteFile(path, []byte{}, 0644)
+		if err != nil {
+			ShowErrorDialog(a.Pages, fmt.Sprintf("Create file failed: %v", err))
+		}
+		a.refreshAllPanels()
+		a.restoreFocus()
+	})
+}
+
 // handleRename renames the selected entry.
 func (a *App) handleRename() {
 	entry := a.ActivePanel.SelectedEntry()

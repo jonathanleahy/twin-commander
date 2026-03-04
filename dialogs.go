@@ -305,6 +305,7 @@ func (a *App) showKeybindingsDialog() {
   F5 / c   Copy to other pane (multi-select aware)
   F6 / m   Move to other pane (multi-select aware)
   F7 / n   New directory
+  N        New file
   F8 / d   Delete (trash or permanent, multi-select)
   F2 / R   Rename
   yy       Yank (mark for copy, multi-select)

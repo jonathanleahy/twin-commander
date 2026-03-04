@@ -808,3 +808,15 @@ func TestIntegration_GoDirNavigates(t *testing.T) {
 		t.Errorf("expected panel path %q, got %q", targetDir, app.ActivePanel.Path)
 	}
 }
+
+// TestIntegration_MkfileCreatesFile verifies N opens a dialog for creating a new file.
+func TestIntegration_MkfileCreatesFile(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Press N to trigger new file dialog
+	pressRune(app, 'N')
+	if !app.DialogActive {
+		t.Fatal("expected dialog active after N")
+	}
+}

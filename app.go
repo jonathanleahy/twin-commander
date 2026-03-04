@@ -1371,6 +1371,7 @@ func (a *App) buildMenuBar() {
 			Hotkey: 'f',
 			Items: []MenuItem{
 				{Label: "New Directory", Shortcut: "F7 / n", Action: func() { a.handleMkdir() }},
+				{Label: "New File", Shortcut: "N", Action: func() { a.handleMkfile() }},
 				{Label: "Copy", Shortcut: "F5 / c", Action: func() { a.handleCopy() }},
 				{Label: "Move", Shortcut: "F6 / m", Action: func() { a.handleMove() }},
 				{Label: "Rename", Shortcut: "F2 / R", Action: func() { a.handleRename() }},
