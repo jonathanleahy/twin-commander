@@ -623,9 +623,6 @@ func (a *App) createPanel(path string) *Panel {
 		InactiveBorderColor: tcell.ColorDefault,
 		Selection:           NewSelection(),
 		History:             NewHistory(100),
-		QueueUpdate: func(f func()) {
-			a.Application.QueueUpdateDraw(f)
-		},
 	}
 }
 
