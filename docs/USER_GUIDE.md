@@ -133,7 +133,7 @@ Twin Commander displays icons for 60+ file types and special directories when a 
 | `j` / `Down` | Move cursor down |
 | `k` / `Up` | Move cursor up |
 | `h` / `Backspace` | Go to parent directory / collapse tree node |
-| `l` / `Enter` | Enter directory / expand tree node / open file preview |
+| `l` / `Enter` | Enter directory / expand tree node / open file preview / peek archive |
 | `gg` | Jump to first item |
 | `G` | Jump to last item |
 
@@ -176,6 +176,7 @@ The tree panel on the left is a persistent hierarchy rooted at `$HOME`. Unlike t
 
 - **Enter on a directory** expands it in-place (or collapses if already expanded)
 - **Enter on a file** opens an inline preview
+- **Enter on an archive** (.zip, .tar.gz, .tar.bz2, .tar) shows contents without extracting
 - **h / Backspace** collapses an expanded node, or moves to parent if already collapsed
 - **~** jumps to `$HOME` while preserving all expanded directories
 - **\\** re-roots the tree at `/` for full filesystem browsing
@@ -744,7 +745,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | `j` / `Down` | Move cursor down |
 | `k` / `Up` | Move cursor up |
 | `h` / `Backspace` | Collapse tree node / navigate to parent |
-| `l` / `Enter` | Enter directory / expand node / open file |
+| `l` / `Enter` | Enter directory / expand node / open file / peek archive |
 | `gg` | Jump to top |
 | `G` | Jump to bottom |
 | `~` | Jump to $HOME |

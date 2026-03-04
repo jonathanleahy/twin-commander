@@ -1119,6 +1119,24 @@ func (a *App) handleEnter() {
 	}
 
 	if !entry.IsDir {
+		// Archive peek — show contents without extracting
+		if IsArchive(entry.Name) {
+			archPath := filepath.Join(a.ActivePanel.Path, entry.Name)
+			entries, err := ListArchive(archPath)
+			if err != nil {
+				a.setStatusError(fmt.Sprintf("Archive error: %v", err))
+				return
+			}
+			text := FormatArchiveListing(entries, entry.Name)
+			a.Viewer.Wrapper.SetTitle(fmt.Sprintf(" Archive: %s ", entry.Name))
+			a.Viewer.TextView.SetText(text)
+			a.Viewer.TextView.ScrollToBeginning()
+			a.ViewerActive = true
+			a.Pages.SwitchToPage("viewer")
+			a.Application.SetFocus(a.Viewer.TextView)
+			return
+		}
+
 		if a.PreviewActive {
 			// Already previewing — Enter escalates to full-screen viewer
 			a.openViewer(filepath.Join(a.ActivePanel.Path, entry.Name))

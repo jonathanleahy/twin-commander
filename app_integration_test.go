@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"os"
 	"path/filepath"
 	"testing"
@@ -939,5 +940,36 @@ func TestIntegration_FileInfoOnDotDot(t *testing.T) {
 	pressRune(app, 'i')
 	if app.DialogActive {
 		t.Error("expected no dialog when cursor is on ..")
+	}
+}
+
+func TestIntegration_ArchivePeek(t *testing.T) {
+	dir := setupIntegrationDir(t)
+
+	// Create a zip file in the test dir
+	zipPath := filepath.Join(dir, "test.zip")
+	f, err := os.Create(zipPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := zip.NewWriter(f)
+	fw, _ := w.Create("hello.txt")
+	fw.Write([]byte("hello"))
+	w.Close()
+	f.Close()
+
+	app := newTestApp(t, dir)
+
+	// Navigate to the zip file (entries are sorted, find it)
+	for i := 0; i < len(app.ActivePanel.Entries); i++ {
+		if app.ActivePanel.Entries[i].Name == "test.zip" {
+			app.ActivePanel.Table.Select(i, 0)
+			break
+		}
+	}
+
+	pressKey(app, tcell.KeyEnter, 0, tcell.ModNone)
+	if !app.ViewerActive {
+		t.Error("expected viewer active after Enter on archive")
 	}
 }
