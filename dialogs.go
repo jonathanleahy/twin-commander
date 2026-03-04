@@ -322,6 +322,7 @@ func (a *App) showKeybindingsDialog() {
   b        Beyond Compare
   Ctrl+D   File diff (compare across panels)
   D        Disk usage (size breakdown)
+  i        File info (details about selected entry)
   :        Run shell command (%f=file, %d=dir, %s=selected)
   Ctrl+G   Git diff
   gs       Git stage/unstage
@@ -949,6 +950,89 @@ func (a *App) showRecentDirs() {
 
 	a.Pages.AddPage("recent-dirs", overlay, true, true)
 	a.Application.SetFocus(list)
+}
+
+// showFileInfo displays a detailed info dialog for the selected entry.
+func (a *App) showFileInfo() {
+	entry := a.ActivePanel.SelectedEntry()
+	if entry == nil || entry.Name == ".." {
+		return
+	}
+	path := filepath.Join(a.ActivePanel.Path, entry.Name)
+
+	// Use Lstat to get symlink info without following
+	info, err := os.Lstat(path)
+	if err != nil {
+		a.setStatusError(fmt.Sprintf("Info error: %v", err))
+		return
+	}
+
+	var lines []string
+	lines = append(lines, fmt.Sprintf("[yellow]Name:[-]        %s", entry.Name))
+	lines = append(lines, fmt.Sprintf("[yellow]Path:[-]        %s", path))
+
+	// Type
+	fileType := "File"
+	if info.IsDir() {
+		fileType = "Directory"
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		fileType = "Symlink"
+		if target, err := os.Readlink(path); err == nil {
+			lines = append(lines, fmt.Sprintf("[yellow]Type:[-]        %s → %s", fileType, target))
+		} else {
+			lines = append(lines, fmt.Sprintf("[yellow]Type:[-]        %s (broken)", fileType))
+		}
+	} else {
+		lines = append(lines, fmt.Sprintf("[yellow]Type:[-]        %s", fileType))
+	}
+
+	// Size
+	if info.IsDir() {
+		size, _ := CalcDirSize(path)
+		lines = append(lines, fmt.Sprintf("[yellow]Size:[-]        %s", FormatSize(size)))
+	} else {
+		lines = append(lines, fmt.Sprintf("[yellow]Size:[-]        %s (%d bytes)", FormatSize(info.Size()), info.Size()))
+	}
+
+	// Permissions
+	lines = append(lines, fmt.Sprintf("[yellow]Permissions:[-] %s (%04o)", info.Mode().Perm(), info.Mode().Perm()))
+
+	// Timestamps
+	lines = append(lines, fmt.Sprintf("[yellow]Modified:[-]    %s", info.ModTime().Format("2006-01-02 15:04:05")))
+
+	text := strings.Join(lines, "\n")
+
+	tv := tview.NewTextView().
+		SetDynamicColors(true).
+		SetText(text)
+	tv.SetBorder(true).
+		SetTitle(" File Info ").
+		SetBorderPadding(1, 1, 2, 2)
+
+	a.DialogActive = true
+	tv.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape || event.Rune() == 'q' || event.Rune() == 'i' {
+			a.DialogActive = false
+			a.Pages.RemovePage("file-info")
+			a.restoreFocus()
+			return nil
+		}
+		return event
+	})
+
+	height := len(lines) + 6
+	width := 65
+	overlay := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(tv, height, 0, true).
+			AddItem(nil, 0, 1, false), width, 0, true).
+		AddItem(nil, 0, 1, false)
+
+	a.Pages.AddPage("file-info", overlay, true, true)
+	a.Application.SetFocus(tv)
 }
 
 // togglePreviewPane toggles the inline preview pane on/off.
