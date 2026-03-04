@@ -1039,3 +1039,13 @@ func TestIntegration_SyntaxThemePicker(t *testing.T) {
 		t.Error("expected dialog active after T")
 	}
 }
+
+func TestIntegration_DuplicateFinder(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	pressKey(app, tcell.KeyCtrlU, 0, tcell.ModCtrl)
+	if !app.DialogActive {
+		t.Error("expected dialog active after Ctrl+U")
+	}
+}

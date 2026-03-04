@@ -261,6 +261,9 @@ func (a *App) handleNormalModeKey(event *tcell.EventKey) *tcell.EventKey {
 	case tcell.KeyCtrlK:
 		a.showDirCompare()
 		return nil
+	case tcell.KeyCtrlU:
+		a.showDuplicateFinder()
+		return nil
 	case tcell.KeyCtrlL:
 		a.showGoToPathDialog()
 		return nil

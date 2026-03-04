@@ -42,6 +42,7 @@ go build -o twin-commander .
 - **Auto-refresh** — panels refresh automatically when files change on disk (fsnotify)
 - **Directory comparison** — Ctrl+K highlights differences between left and right panels (unique files, size/date changes)
 - **Directory flatten** — `W` shows all files recursively in a flat list with relative paths
+- **Duplicate finder** — Ctrl+U scans for duplicate files by size+MD5 hash, shows wasted space
 - **Inline file preview** with syntax highlighting for 14+ languages
 - **Fullscreen viewer** with progressive disclosure (preview → viewer → close)
 - **Menu bar** with keyboard hotkeys (Alt+F/V/S/G/T/O) and vim-style navigation
@@ -181,6 +182,7 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | b | Launch Beyond Compare |
 | Ctrl+D | File diff (compare selected files across panels) |
 | Ctrl+K | Directory compare (highlight differences between panels) |
+| Ctrl+U | Duplicate finder (scan for duplicate files by content) |
 | D | Disk usage (size breakdown of subdirectories) |
 | i | File info (detailed info about selected entry) |
 | Ctrl+G | Git diff for selected file |
