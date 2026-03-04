@@ -568,6 +568,8 @@ func (a *App) handleKeyAction(action KeyAction) {
 		a.handleGitStage()
 	case KeyActionGoDir:
 		a.enterGoDirMode()
+	case KeyActionGoRecent:
+		a.showRecentDirs()
 	}
 }
 

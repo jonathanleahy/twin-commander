@@ -106,6 +106,7 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | = | History forward |
 | Ctrl+L | Go to path (input dialog) |
 | gd | Directory jump (fuzzy finder for directories) |
+| gr | Recent directories |
 | Tab | Cycle active pane forward |
 | Shift+Tab | Cycle active pane backward |
 

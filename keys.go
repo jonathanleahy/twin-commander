@@ -12,6 +12,7 @@ const (
 	KeyActionYank               // yy
 	KeyActionGitStage           // gs
 	KeyActionGoDir              // gd
+	KeyActionGoRecent           // gr
 )
 
 // KeySequence tracks multi-key sequences (vim-style gg, dd, yy, gs).
@@ -45,6 +46,8 @@ func (ks *KeySequence) Feed(r rune) (KeyAction, bool) {
 			return KeyActionGitStage, true
 		case first == 'g' && r == 'd':
 			return KeyActionGoDir, true
+		case first == 'g' && r == 'r':
+			return KeyActionGoRecent, true
 		case first == 'd' && r == 'd':
 			return KeyActionDelete, true
 		case first == 'y' && r == 'y':
