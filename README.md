@@ -39,6 +39,7 @@ go build -o twin-commander .
 - **Hybrid Tree + Dual-Pane modes** — toggle with Ctrl+T
 - **Quick jump** — `~` to home (preserves tree state), `\` to root (works in all modes), `Ctrl+L` go to path
 - **Directory history** — browser-style back (`-`) and forward (`=`) navigation
+- **Auto-refresh** — panels refresh automatically when files change on disk (fsnotify)
 - **Inline file preview** with syntax highlighting for 14+ languages
 - **Fullscreen viewer** with progressive disclosure (preview → viewer → close)
 - **Menu bar** with keyboard hotkeys (Alt+F/V/S/G/T/O) and vim-style navigation
