@@ -82,6 +82,9 @@ type App struct {
 	// Anchor (scope lock)
 	AnchorPath   string
 	AnchorActive bool
+
+	// File watcher for auto-refresh
+	FileWatcher *FileWatcher
 }
 
 // NewApp creates and initializes the application.

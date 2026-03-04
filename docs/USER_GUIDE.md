@@ -187,6 +187,10 @@ This means you can have `/home/user/projects/` expanded while simultaneously bro
 
 Classic two-panel layout. Both panels show full file listings side by side. Each panel navigates independently. File operations (copy, move) work between the two panels.
 
+### Auto-Refresh
+
+Both panels automatically refresh when files are created, modified, or deleted on disk by external programs. This uses the OS filesystem notification system (fsnotify/inotify), so changes appear within ~300ms without manual refresh.
+
 ### Resizing Panes
 
 | Key | Action |

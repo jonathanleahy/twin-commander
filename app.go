@@ -277,6 +277,12 @@ func NewApp(startPath string) *App {
 	app.Application.SetRoot(app.Pages, true)
 	app.setInitialFocus()
 
+	// Start file watcher for auto-refresh
+	if fw, err := NewFileWatcher(app); err == nil {
+		app.FileWatcher = fw
+		app.updateWatchedDirs()
+	}
+
 	// Check for nerd font in background (fc-list can be slow)
 	if !app.Config.NerdFontDismissed {
 		go func() {
@@ -633,6 +639,9 @@ func (a *App) Run() error {
 
 // saveSessionOnQuit persists the current workspace state before exit.
 func (a *App) saveSessionOnQuit() {
+	if a.FileWatcher != nil {
+		a.FileWatcher.Close()
+	}
 	if !a.Config.SessionRestore {
 		return
 	}
@@ -1334,6 +1343,16 @@ func (a *App) refreshAllPanels() {
 		a.TreePanel.Refresh()
 	}
 	a.updateStatusBars()
+	a.updateWatchedDirs()
+}
+
+// updateWatchedDirs tells the file watcher which directories to monitor.
+func (a *App) updateWatchedDirs() {
+	if a.FileWatcher == nil {
+		return
+	}
+	dirs := []string{a.LeftPanel.Path, a.RightPanel.Path}
+	a.FileWatcher.UpdateWatchedDirs(dirs)
 }
 
 // restoreFocus returns focus to the appropriate widget after a dialog closes.
