@@ -24,6 +24,9 @@ type Panel struct {
 	Selection           *Selection      // Multi-file selection model
 	History             *History        // Directory navigation history
 	DirSizeCache        *DirSizeCache   // Async directory size cache
+	// QueueUpdate, if set, defers directory loads to the next event loop cycle
+	// so the UI can update the title bar immediately (bounce for responsiveness).
+	QueueUpdate         func(func())
 }
 
 // LoadDir reads the directory, sorts, filters, and renders entries to the Table.
@@ -231,8 +234,17 @@ func (p *Panel) NavigateInto(name string) {
 	if p.History != nil {
 		p.History.Push(oldPath)
 	}
-	p.LoadDir()
-	p.Table.Select(0, 0)
+	// Bounce: update title immediately, defer load to next event loop cycle
+	if p.QueueUpdate != nil {
+		p.Table.SetTitle(p.Path)
+		p.QueueUpdate(func() {
+			p.LoadDir()
+			p.Table.Select(0, 0)
+		})
+	} else {
+		p.LoadDir()
+		p.Table.Select(0, 0)
+	}
 }
 
 // TryNavigateInto attempts to navigate into a subdirectory.
@@ -260,17 +272,26 @@ func (p *Panel) NavigateUp() string {
 	if p.History != nil {
 		p.History.Push(oldPath)
 	}
-	p.LoadDir()
 
-	// Position cursor on the previous directory
-	for i, e := range p.Entries {
-		if e.Name == prevName {
-			p.Table.Select(i, 0)
-			return prevName
+	loadAndPosition := func() {
+		p.LoadDir()
+		// Position cursor on the previous directory
+		for i, e := range p.Entries {
+			if e.Name == prevName {
+				p.Table.Select(i, 0)
+				return
+			}
 		}
+		p.Table.Select(0, 0)
 	}
-	// If not found, select row 0
-	p.Table.Select(0, 0)
+
+	// Bounce: update title immediately, defer load to next event loop cycle
+	if p.QueueUpdate != nil {
+		p.Table.SetTitle(p.Path)
+		p.QueueUpdate(loadAndPosition)
+	} else {
+		loadAndPosition()
+	}
 	return prevName
 }
 

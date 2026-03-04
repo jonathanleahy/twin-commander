@@ -79,6 +79,7 @@ type App struct {
 func (a *App) handleKeyEvent(event *tcell.EventKey) *tcell.EventKey {
 	// Ctrl+C always quits
 	if event.Key() == tcell.KeyCtrlC {
+		a.saveSessionOnQuit()
 		a.Application.Stop()
 		return nil
 	}
@@ -257,6 +258,7 @@ func (a *App) handleNormalModeKey(event *tcell.EventKey) *tcell.EventKey {
 		// Single-key bindings
 		switch r {
 		case 'q':
+			a.saveSessionOnQuit()
 			a.Application.Stop()
 			return nil
 		case 'j':
