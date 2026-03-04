@@ -1468,6 +1468,7 @@ func (a *App) buildMenuBar() {
 				{Label: "Disk Usage", Shortcut: "D", Action: func() { a.showDiskUsage() }},
 				{Label: "File Info", Shortcut: "i", Action: func() { a.showFileInfo() }},
 				{Label: "Copy Path", Shortcut: mod + "+C", Action: func() { a.copyPathToClipboard() }},
+				{Label: "Paste from Clipboard", Shortcut: "Ctrl+V", Action: func() { a.handleClipboardPaste() }},
 				{Label: "Git Diff", Shortcut: "Ctrl+G", Action: func() { a.handleGitDiff() }},
 				{Label: "Git Stage/Unstage", Shortcut: "gs", Action: func() { a.handleGitStage() }},
 			},

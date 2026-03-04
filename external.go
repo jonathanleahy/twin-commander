@@ -101,6 +101,32 @@ func CopyToClipboard(text string) error {
 	return exec.ErrNotFound
 }
 
+// ReadFromClipboard reads text from the system clipboard.
+func ReadFromClipboard() (string, error) {
+	// Try xclip first
+	if path, err := exec.LookPath("xclip"); err == nil {
+		cmd := exec.Command(path, "-selection", "clipboard", "-o")
+		out, err := cmd.Output()
+		return string(out), err
+	}
+
+	// Try xsel
+	if path, err := exec.LookPath("xsel"); err == nil {
+		cmd := exec.Command(path, "--clipboard", "--output")
+		out, err := cmd.Output()
+		return string(out), err
+	}
+
+	// Try wl-paste (Wayland)
+	if path, err := exec.LookPath("wl-paste"); err == nil {
+		cmd := exec.Command(path, "--no-newline")
+		out, err := cmd.Output()
+		return string(out), err
+	}
+
+	return "", exec.ErrNotFound
+}
+
 // HasNerdFont checks if a Nerd Font is installed.
 // Uses fc-list on Linux, system_profiler on macOS.
 func HasNerdFont() bool {

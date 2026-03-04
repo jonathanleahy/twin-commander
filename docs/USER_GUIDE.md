@@ -333,6 +333,8 @@ Opens an input dialog for the new directory name. Created in the current panel's
 
 Press `yy` to mark the current file (or all selected files) for copying. Navigate to the destination directory and press `p` to paste. This is an internal clipboard — it doesn't use the system clipboard.
 
+You can also paste files from the system clipboard with `Ctrl+V`. Copy file paths from another file manager or terminal, then paste them into Twin Commander.
+
 ### Symlink Safety
 
 `CopyDir` preserves symlinks instead of following them, preventing infinite loops when copying directory trees that contain circular symlinks.
@@ -826,6 +828,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | `Ctrl+G` | Git diff |
 | `gs` | Git stage/unstage |
 | `Alt+C` | Copy path to clipboard |
+| `Ctrl+V` | Paste files from system clipboard |
 
 ### Resize
 
