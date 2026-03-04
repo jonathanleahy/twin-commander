@@ -973,3 +973,21 @@ func TestIntegration_ArchivePeek(t *testing.T) {
 		t.Error("expected viewer active after Enter on archive")
 	}
 }
+
+func TestIntegration_FavoriteToggle(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+	// Override favorites to use temp file
+	app.Favorites = &Favorites{path: filepath.Join(dir, "fav.json")}
+
+	pressRune(app, 'F')
+	if !app.Favorites.Has(app.ActivePanel.Path) {
+		t.Error("expected current dir to be pinned after F")
+	}
+
+	// Press F again to unpin
+	pressRune(app, 'F')
+	if app.Favorites.Has(app.ActivePanel.Path) {
+		t.Error("expected current dir to be unpinned after second F")
+	}
+}

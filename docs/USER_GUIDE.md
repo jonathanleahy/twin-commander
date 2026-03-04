@@ -146,6 +146,8 @@ Twin Commander displays icons for 60+ file types and special directories when a 
 | `Ctrl+L` | Go to path — type any absolute path or use `~` for home |
 | `gd` | Directory jump — fuzzy finder for directories only |
 | `gr` | Recent directories — list of recently visited dirs |
+| `gf` | Favorites — pinned directories |
+| `F` | Pin/unpin current directory to favorites |
 | `a` | Anchor — lock scope to current directory |
 | `-` | History back (like a browser back button) |
 | `=` | History forward |
@@ -762,6 +764,8 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | `Ctrl+L` | Go to path |
 | `gd` | Directory jump (fuzzy finder for directories) |
 | `gr` | Recent directories |
+| `gf` | Favorites |
+| `F` | Pin/unpin directory |
 | `Tab` | Cycle pane forward |
 | `Shift+Tab` | Cycle pane backward |
 
