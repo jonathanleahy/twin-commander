@@ -24,11 +24,18 @@ type Panel struct {
 	Selection           *Selection      // Multi-file selection model
 	History             *History        // Directory navigation history
 	DirSizeCache        *DirSizeCache   // Async directory size cache
+	FlattenMode         bool            // Show all files recursively
 }
 
 // LoadDir reads the directory, sorts, filters, and renders entries to the Table.
 func (p *Panel) LoadDir() {
-	entries, err := ReadEntries(p.Path, p.ShowHidden)
+	var entries []FileEntry
+	var err error
+	if p.FlattenMode {
+		entries, err = ReadEntriesRecursive(p.Path, p.ShowHidden)
+	} else {
+		entries, err = ReadEntries(p.Path, p.ShowHidden)
+	}
 	if err != nil {
 		p.StatusBar = fmt.Sprintf("Cannot read directory: %s", p.Path)
 		return
@@ -50,7 +57,11 @@ func (p *Panel) LoadDir() {
 	p.Entries = entries
 	p.renderTable()
 	p.updateStatusBar()
-	p.Table.SetTitle(p.Path)
+	if p.FlattenMode {
+		p.Table.SetTitle(p.Path + " [FLAT]")
+	} else {
+		p.Table.SetTitle(p.Path)
+	}
 
 	// Trigger async directory size calculations
 	if p.DirSizeCache != nil {

@@ -41,6 +41,7 @@ go build -o twin-commander .
 - **Directory history** — browser-style back (`-`) and forward (`=`) navigation
 - **Auto-refresh** — panels refresh automatically when files change on disk (fsnotify)
 - **Directory comparison** — Ctrl+K highlights differences between left and right panels (unique files, size/date changes)
+- **Directory flatten** — `W` shows all files recursively in a flat list with relative paths
 - **Inline file preview** with syntax highlighting for 14+ languages
 - **Fullscreen viewer** with progressive disclosure (preview → viewer → close)
 - **Menu bar** with keyboard hotkeys (Alt+F/V/S/G/T/O) and vim-style navigation
@@ -124,6 +125,7 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | . | Toggle hidden files |
 | s | Cycle sort mode (name / size / date / extension) |
 | S | Toggle sort order (ascending / descending) |
+| W | Toggle flatten (show all files recursively) |
 | r | Refresh current directory |
 
 #### Workspaces

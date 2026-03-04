@@ -87,6 +87,67 @@ func ReadEntries(path string, showHidden bool) ([]FileEntry, error) {
 	return entries, nil
 }
 
+// ReadEntriesRecursive walks a directory tree and returns all files with
+// relative paths as names. Directories are not included in the output.
+// Limited to 10,000 entries to avoid overwhelming the UI.
+func ReadEntriesRecursive(root string, showHidden bool) ([]FileEntry, error) {
+	const maxEntries = 10000
+	var entries []FileEntry
+
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil // skip inaccessible dirs
+		}
+
+		name := d.Name()
+		if !showHidden && strings.HasPrefix(name, ".") {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		// Skip the root itself
+		if path == root {
+			return nil
+		}
+
+		// Skip directories — we only show files in flatten mode
+		if d.IsDir() {
+			return nil
+		}
+
+		rel, _ := filepath.Rel(root, path)
+
+		entry := FileEntry{
+			Name:       rel,
+			Accessible: true,
+			IsSymlink:  d.Type()&fs.ModeSymlink != 0,
+		}
+
+		info, infoErr := d.Info()
+		if infoErr != nil {
+			entry.Accessible = false
+			entry.Size = -1
+		} else {
+			entry.Size = info.Size()
+			entry.ModTime = info.ModTime()
+			entry.Mode = info.Mode()
+			if info.Mode()&0111 != 0 {
+				entry.IsExecutable = true
+			}
+		}
+
+		entries = append(entries, entry)
+		if len(entries) >= maxEntries {
+			return filepath.SkipAll
+		}
+		return nil
+	})
+
+	return entries, err
+}
+
 // SortEntries sorts entries with directories first, then files.
 // Within each group, entries are sorted alphabetically (case-insensitive).
 // Does NOT include ".." in the sort; ".." is prepended separately by Panel.

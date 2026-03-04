@@ -193,6 +193,10 @@ Classic two-panel layout. Both panels show full file listings side by side. Each
 
 Both panels automatically refresh when files are created, modified, or deleted on disk by external programs. This uses the OS filesystem notification system (fsnotify/inotify), so changes appear within ~300ms without manual refresh.
 
+### Flatten Mode
+
+Press `W` to toggle flatten mode. This recursively lists all files in the current directory and its subdirectories as a flat list, showing relative paths (e.g., `src/main.go`). Useful for finding files deep in a directory tree. Limited to 10,000 entries. The panel title shows `[FLAT]` when active. Press `W` again to return to normal view.
+
 ### Resizing Panes
 
 | Key | Action |
@@ -779,6 +783,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | `.` | Toggle hidden files |
 | `s` | Cycle sort mode (name / size / date / extension) |
 | `S` | Toggle sort order (ascending / descending) |
+| `W` | Toggle flatten (recursive file list) |
 | `r` | Refresh current directory |
 
 ### Workspaces
