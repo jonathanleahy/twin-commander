@@ -156,6 +156,7 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | F6 / m | Move to other pane (multi-select aware) |
 | F7 / n | Create new directory (path traversal protected) |
 | N | Create new empty file |
+| % | Bulk rename (find/replace in selected filenames) |
 | F8 / dd | Delete — trash or permanent (multi-select aware) |
 | F2 / R | Rename (path traversal protected) |
 | yy | Yank — mark for copy (multi-select aware) |

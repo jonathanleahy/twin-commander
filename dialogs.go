@@ -310,6 +310,7 @@ func (a *App) showKeybindingsDialog() {
   N        New file
   F8 / d   Delete (trash or permanent, multi-select)
   F2 / R   Rename
+  %%        Bulk rename (find/replace in selected filenames)
   yy       Yank (mark for copy, multi-select)
   p        Paste yanked files
   dd       Delete (vim-style)
