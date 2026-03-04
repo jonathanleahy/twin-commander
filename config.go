@@ -20,6 +20,7 @@ type Config struct {
 	Bookmarks          []string `json:"bookmarks"`
 	TreeRoot           string   `json:"tree_root"`
 	NerdFontDismissed  bool     `json:"nerd_font_dismissed"`
+	SessionRestore     bool     `json:"session_restore"`
 }
 
 func configDir() string {
@@ -47,6 +48,7 @@ func DefaultConfig() Config {
 		DefaultViewMode: "hybrid",
 		EditorCommand:   "",
 		TreeRoot:        "home",
+		SessionRestore:  true,
 	}
 }
 

@@ -9,25 +9,25 @@ import (
 
 // Workspace captures the full state of a single workspace (both panels, view mode, etc.).
 type Workspace struct {
-	Name             string
-	LeftPath         string
-	LeftShowHidden   bool
-	LeftSortMode     SortMode
-	LeftSortOrder    SortOrder
-	RightPath        string
-	RightShowHidden  bool
-	RightSortMode    SortMode
-	RightSortOrder   SortOrder
-	ViewMode         ViewMode
-	TreeFocused      bool
-	PreviewActive    bool
-	ActiveIsLeft     bool
-	HSplit           int
-	VSplit           int
-	TreeRootPath      string
-	TreeExpandedPaths map[string]bool
-	AnchorPath        string `json:"anchor_path"`
-	AnchorActive      bool   `json:"anchor_active"`
+	Name              string          `json:"name"`
+	LeftPath          string          `json:"left_path"`
+	LeftShowHidden    bool            `json:"left_show_hidden"`
+	LeftSortMode      SortMode        `json:"left_sort_mode"`
+	LeftSortOrder     SortOrder       `json:"left_sort_order"`
+	RightPath         string          `json:"right_path"`
+	RightShowHidden   bool            `json:"right_show_hidden"`
+	RightSortMode     SortMode        `json:"right_sort_mode"`
+	RightSortOrder    SortOrder       `json:"right_sort_order"`
+	ViewMode          ViewMode        `json:"view_mode"`
+	TreeFocused       bool            `json:"tree_focused"`
+	PreviewActive     bool            `json:"preview_active"`
+	ActiveIsLeft      bool            `json:"active_is_left"`
+	HSplit            int             `json:"hsplit"`
+	VSplit            int             `json:"vsplit"`
+	TreeRootPath      string          `json:"tree_root_path"`
+	TreeExpandedPaths map[string]bool `json:"tree_expanded_paths"`
+	AnchorPath        string          `json:"anchor_path"`
+	AnchorActive      bool            `json:"anchor_active"`
 }
 
 // WorkspaceManager manages multiple workspaces with a tab bar.

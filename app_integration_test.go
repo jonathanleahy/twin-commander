@@ -31,7 +31,11 @@ func newTestApp(t *testing.T, dir string) *App {
 	// Suppress nerd font detection
 	t.Setenv("TERM", "dumb")
 
-	app := NewApp()
+	app := NewApp("")
+
+	// Disable async bounce in tests — no event loop running
+	app.LeftPanel.QueueUpdate = nil
+	app.RightPanel.QueueUpdate = nil
 
 	// Switch to dual-pane mode for predictable left/right panel tests
 	app.ViewMode = ViewDualPane

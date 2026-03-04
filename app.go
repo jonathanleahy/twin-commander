@@ -11,11 +11,20 @@ import (
 	"github.com/rivo/tview"
 )
 
-func NewApp() *App {
+func NewApp(startPath string) *App {
 	cwd, err := os.Getwd()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Cannot determine working directory: %v\n", err)
 		os.Exit(1)
+	}
+	// Use explicit start path if provided
+	if startPath != "" {
+		abs, err := filepath.Abs(startPath)
+		if err == nil {
+			if info, serr := os.Stat(abs); serr == nil && info.IsDir() {
+				cwd = abs
+			}
+		}
 	}
 
 	app := &App{
@@ -233,6 +242,11 @@ func NewApp() *App {
 	// Load initial directories
 	app.LeftPanel.LoadDir()
 	app.RightPanel.LoadDir()
+
+	// Restore session if enabled (and no explicit start path)
+	if startPath == "" {
+		app.loadSessionIfEnabled()
+	}
 
 	// Detect git repo
 	app.GitRepo = DetectGitRepo(cwd)
@@ -591,12 +605,47 @@ func (a *App) createPanel(path string) *Panel {
 		InactiveBorderColor: tcell.ColorDefault,
 		Selection:           NewSelection(),
 		History:             NewHistory(100),
+		QueueUpdate: func(f func()) {
+			a.Application.QueueUpdateDraw(f)
+		},
 	}
 }
 
 // Run starts the application.
 func (a *App) Run() error {
 	return a.Application.Run()
+}
+
+// saveSessionOnQuit persists the current workspace state before exit.
+func (a *App) saveSessionOnQuit() {
+	if !a.Config.SessionRestore {
+		return
+	}
+	a.saveWorkspaceState()
+	_ = SaveSession(a.WorkspaceMgr.Workspaces, a.WorkspaceMgr.Active)
+}
+
+// loadSessionIfEnabled restores workspaces from the previous session.
+func (a *App) loadSessionIfEnabled() {
+	if !a.Config.SessionRestore {
+		return
+	}
+	session, err := LoadSession()
+	if err != nil || session == nil || len(session.Workspaces) == 0 {
+		return
+	}
+
+	// Replace default workspace(s) with saved ones
+	a.WorkspaceMgr.Workspaces = make([]*Workspace, len(session.Workspaces))
+	for i := range session.Workspaces {
+		ws := session.Workspaces[i]
+		a.WorkspaceMgr.Workspaces[i] = &ws
+	}
+	a.WorkspaceMgr.Active = session.ActiveIndex
+	a.WorkspaceMgr.renderTabBar()
+
+	// Restore the active workspace state
+	a.restoreWorkspaceState()
 }
 
 func (a *App) openViewer(path string) {

@@ -187,6 +187,9 @@ func (a *App) showConfigDialog() {
 	form.AddCheckbox("Use trash (soft delete)", cfg.UseTrash, func(checked bool) {
 		cfg.UseTrash = checked
 	})
+	form.AddCheckbox("Restore session on start", cfg.SessionRestore, func(checked bool) {
+		cfg.SessionRestore = checked
+	})
 
 	sortOptions := []string{"name", "size", "date", "extension"}
 	sortIdx := 0
@@ -228,7 +231,7 @@ func (a *App) showConfigDialog() {
 
 	// Center the dialog
 	width := 60
-	height := 22
+	height := 24
 	overlay := tview.NewFlex().SetDirection(tview.FlexColumn).
 		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
