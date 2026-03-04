@@ -85,6 +85,9 @@ type App struct {
 
 	// File watcher for auto-refresh
 	FileWatcher *FileWatcher
+
+	// Favorites (pinned directories)
+	Favorites *Favorites
 }
 
 // NewApp creates and initializes the application.
@@ -332,6 +335,9 @@ func (a *App) handleNormalModeKey(event *tcell.EventKey) *tcell.EventKey {
 			return nil
 		case 'L':
 			a.handleSymlink()
+			return nil
+		case 'F':
+			a.toggleFavorite()
 			return nil
 		case 'i':
 			a.showFileInfo()
@@ -591,6 +597,8 @@ func (a *App) handleKeyAction(action KeyAction) {
 		a.enterGoDirMode()
 	case KeyActionGoRecent:
 		a.showRecentDirs()
+	case KeyActionGoFavorites:
+		a.showFavorites()
 	}
 }
 

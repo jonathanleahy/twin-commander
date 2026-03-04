@@ -278,6 +278,8 @@ func (a *App) showKeybindingsDialog() {
   Ctrl+L          Go to path...
   gd              Directory jump (fuzzy)
   gr              Recent directories
+  gf              Favorites (pinned directories)
+  F               Pin/unpin current directory
   Tab             Switch active pane (forward)
   Shift+Tab       Switch active pane (backward)
 
@@ -950,6 +952,115 @@ func (a *App) showRecentDirs() {
 		AddItem(nil, 0, 1, false)
 
 	a.Pages.AddPage("recent-dirs", overlay, true, true)
+	a.Application.SetFocus(list)
+}
+
+// toggleFavorite adds or removes the current directory from favorites.
+func (a *App) toggleFavorite() {
+	dir := a.ActivePanel.Path
+	if added := a.Favorites.Toggle(dir); added {
+		a.setStatusError(fmt.Sprintf("★ Pinned: %s", dir))
+	} else {
+		a.setStatusError(fmt.Sprintf("Unpinned: %s", dir))
+	}
+}
+
+// showFavorites displays the favorites list for quick navigation.
+func (a *App) showFavorites() {
+	if len(a.Favorites.Paths) == 0 {
+		a.setStatusError("No favorites — press F to pin current directory")
+		return
+	}
+
+	a.DialogActive = true
+	list := tview.NewList()
+	list.SetBorder(true)
+	list.SetTitle(" ★ Favorites ")
+	list.SetBorderPadding(0, 0, 1, 1)
+	list.ShowSecondaryText(false)
+	list.SetHighlightFullLine(true)
+
+	for i, p := range a.Favorites.Paths {
+		shortcut := rune(0)
+		if i < 9 {
+			shortcut = rune('1' + i)
+		}
+		list.AddItem(p, "", shortcut, nil)
+	}
+
+	closeDialog := func() {
+		a.DialogActive = false
+		a.Pages.RemovePage("favorites")
+		a.restoreFocus()
+	}
+
+	list.SetSelectedFunc(func(idx int, _ string, _ string, _ rune) {
+		if idx >= 0 && idx < len(a.Favorites.Paths) {
+			path := a.Favorites.Paths[idx]
+			closeDialog()
+			if a.AnchorActive && !a.isPathInScope(path) {
+				a.setStatusError("Favorite outside anchor scope")
+				return
+			}
+			a.ActivePanel.Path = path
+			a.ActivePanel.LoadDir()
+			if a.ViewMode == ViewHybridTree {
+				a.TreePanel.NavigateToPath(path)
+			}
+			a.updateStatusBars()
+		}
+	})
+
+	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEscape:
+			closeDialog()
+			return nil
+		case tcell.KeyRune:
+			switch event.Rune() {
+			case 'j':
+				return tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone)
+			case 'k':
+				return tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
+			case 'x':
+				// Remove selected favorite
+				idx := list.GetCurrentItem()
+				if idx >= 0 && idx < len(a.Favorites.Paths) {
+					a.Favorites.Toggle(a.Favorites.Paths[idx])
+					if len(a.Favorites.Paths) == 0 {
+						closeDialog()
+						return nil
+					}
+					// Rebuild list
+					list.Clear()
+					for i, p := range a.Favorites.Paths {
+						shortcut := rune(0)
+						if i < 9 {
+							shortcut = rune('1' + i)
+						}
+						list.AddItem(p, "", shortcut, nil)
+					}
+				}
+				return nil
+			}
+		}
+		return event
+	})
+
+	height := len(a.Favorites.Paths) + 4
+	if height > 24 {
+		height = 24
+	}
+	width := 60
+	overlay := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(list, height, 0, true).
+			AddItem(nil, 0, 1, false), width, 0, true).
+		AddItem(nil, 0, 1, false)
+
+	a.Pages.AddPage("favorites", overlay, true, true)
 	a.Application.SetFocus(list)
 }
 

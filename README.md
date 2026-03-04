@@ -109,6 +109,8 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | Ctrl+L | Go to path (input dialog) |
 | gd | Directory jump (fuzzy finder for directories) |
 | gr | Recent directories |
+| gf | Favorites (pinned directories) |
+| F | Pin/unpin current directory to favorites |
 | Tab | Cycle active pane forward |
 | Shift+Tab | Cycle active pane backward |
 

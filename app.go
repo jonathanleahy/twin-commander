@@ -246,6 +246,7 @@ func NewApp(startPath string) *App {
 
 	// Config already loaded early (for tree_root); set up bookmarks
 	app.Bookmarks = NewBookmarkManager(app.Config.Bookmarks)
+	app.Favorites = NewFavorites()
 	app.applyConfig()
 
 	// Build layouts for both modes
@@ -1458,6 +1459,8 @@ func (a *App) buildMenuBar() {
 				{Label: "Go to Path...", Shortcut: "Ctrl+L", Action: func() { a.showGoToPathDialog() }},
 				{Label: "Directory Jump", Shortcut: "gd", Action: func() { a.enterGoDirMode() }},
 				{Label: "Recent Dirs", Shortcut: "gr", Action: func() { a.showRecentDirs() }},
+				{Label: "Favorites", Shortcut: "gf", Action: func() { a.showFavorites() }},
+				{Label: "Pin/Unpin Dir", Shortcut: "F", Action: func() { a.toggleFavorite() }},
 				{Label: "Jump to Home", Shortcut: "~", Action: func() { a.jumpToHome() }},
 				{Label: "Jump to Root /", Shortcut: "\\", Action: func() { a.jumpToRoot() }},
 				{Label: "History Back", Shortcut: "-", Action: func() { a.handleHistoryBack() }},
