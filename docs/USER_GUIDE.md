@@ -15,18 +15,19 @@ A comprehensive guide to Twin Commander, a keyboard-driven dual-pane terminal fi
 7. [File Operations](#file-operations)
 8. [Searching & Filtering](#searching--filtering)
 9. [Fuzzy Finder](#fuzzy-finder)
-10. [Directory Sizes](#directory-sizes)
-11. [Anchor (Scope Lock)](#anchor-scope-lock)
-12. [Workspaces](#workspaces)
-13. [Bookmarks](#bookmarks)
-14. [Shell Command Bar](#shell-command-bar)
-15. [Git Integration](#git-integration)
-16. [Themes & Appearance](#themes--appearance)
-17. [Configuration](#configuration)
-18. [Menu Bar Reference](#menu-bar-reference)
-19. [Complete Keyboard Reference](#complete-keyboard-reference)
-20. [macOS Notes](#macos-notes)
-21. [Troubleshooting](#troubleshooting)
+10. [Directory Jump](#directory-jump)
+11. [Directory Sizes](#directory-sizes)
+12. [Anchor (Scope Lock)](#anchor-scope-lock)
+13. [Workspaces](#workspaces)
+14. [Bookmarks](#bookmarks)
+15. [Shell Command Bar](#shell-command-bar)
+16. [Git Integration](#git-integration)
+17. [Themes & Appearance](#themes--appearance)
+18. [Configuration](#configuration)
+19. [Menu Bar Reference](#menu-bar-reference)
+20. [Complete Keyboard Reference](#complete-keyboard-reference)
+21. [macOS Notes](#macos-notes)
+22. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -143,6 +144,7 @@ Twin Commander displays icons for 60+ file types and special directories when a 
 | `~` | Jump to `$HOME` (preserves all tree expanded state) |
 | `\` | Jump to `/` root filesystem (works in both modes) |
 | `Ctrl+L` | Go to path — type any absolute path or use `~` for home |
+| `gd` | Directory jump — fuzzy finder for directories only |
 | `a` | Anchor — lock scope to current directory |
 | `-` | History back (like a browser back button) |
 | `=` | History forward |
@@ -393,6 +395,24 @@ Typing `apgo` would match `app.go` (contiguous match), `app_config.go` (word bou
 
 ---
 
+## Directory Jump
+
+Press `gd` to open the directory jump overlay — a fuzzy finder that shows **only directories**. This is useful when you know part of a directory name and want to jump to it quickly without navigating through the tree manually.
+
+### Controls
+
+| Key | Action |
+|-----|--------|
+| Type | Filter directories in real-time |
+| `Tab` | Toggle focus between input field and results table |
+| `j` / `k` | Navigate results (when table is focused) |
+| `Enter` | Jump to selected directory |
+| `Esc` | Close directory jump |
+
+When anchored, results are scoped to the anchor directory.
+
+---
+
 ## Directory Sizes
 
 Directory sizes are calculated asynchronously in the background. This means the UI stays responsive while sizes are computed.
@@ -428,6 +448,7 @@ When anchored:
 
 - **Recursive search** (`Ctrl+F`): only searches within the anchor directory
 - **Fuzzy finder** (`Ctrl+P`): only indexes files within the anchor directory
+- **Directory jump** (`gd`): only indexes directories within the anchor directory
 - **Navigate up** (`h` / `Backspace`): stops at the anchor root — you can't go higher
 - **Jump to home** (`~`): jumps to the anchor root instead of `$HOME`
 - **Jump to root** (`\`): jumps to the anchor root instead of `/`
@@ -670,6 +691,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 |------|----------|
 | Anchor | a |
 | Go to Path... | Ctrl+L |
+| Directory Jump | gd |
 | Jump to Home | ~ |
 | Jump to Root / | \ |
 | History Back | - |
@@ -720,6 +742,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | `-` | History back |
 | `=` | History forward |
 | `Ctrl+L` | Go to path |
+| `gd` | Directory jump (fuzzy finder for directories) |
 | `Tab` | Cycle pane forward |
 | `Shift+Tab` | Cycle pane backward |
 

@@ -22,6 +22,7 @@ type FuzzySearchOpts struct {
 	Pattern    string
 	MaxResults int
 	ShowHidden bool
+	DirsOnly   bool
 }
 
 // FuzzyScore scores how well pattern matches text using fuzzy matching.
@@ -127,6 +128,11 @@ func FuzzySearch(opts FuzzySearchOpts, results chan<- FuzzyResult, cancel <-chan
 
 		// Skip the root itself
 		if path == opts.RootDir {
+			return nil
+		}
+
+		// DirsOnly: skip non-directory entries
+		if opts.DirsOnly && !info.IsDir() {
 			return nil
 		}
 

@@ -49,6 +49,7 @@ go build -o twin-commander .
 - **Path traversal protection** — mkdir and rename reject `../../` escape attempts
 - **Recursive filename search** with real-time results (Ctrl+F)
 - **Fuzzy finder** — Ctrl+P fuzzy filename search with smart scoring (contiguous, word-boundary, prefix bonuses)
+- **Directory jump** — `gd` fuzzy directory finder to quickly jump to any directory
 - **Content search (grep)** — search file contents with Ctrl+/, skips binary and large files
 - **Directory size visualization** — async background calculation with caching, live-updating size column
 - **Advanced filtering** — glob patterns (`*.go`), regex (`/pattern/`), negation (`!*.tmp`), multi-term
@@ -104,6 +105,7 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | - | History back |
 | = | History forward |
 | Ctrl+L | Go to path (input dialog) |
+| gd | Directory jump (fuzzy finder for directories) |
 | Tab | Cycle active pane forward |
 | Shift+Tab | Cycle active pane backward |
 
