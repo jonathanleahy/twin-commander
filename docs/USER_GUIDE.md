@@ -47,7 +47,14 @@ go build -o twin-commander .
 # Press q
 ```
 
-Twin Commander launches as a full-screen terminal application with no command-line flags. It starts in hybrid tree mode showing a directory tree rooted at `$HOME` on the left and a file panel on the right, pre-expanded to your current working directory.
+Twin Commander launches as a full-screen terminal application. You can optionally pass a starting directory:
+
+```bash
+./twin-commander              # starts in current directory
+./twin-commander ~/projects   # starts in ~/projects
+```
+
+It starts in hybrid tree mode showing a directory tree rooted at `$HOME` on the left and a file panel on the right, pre-expanded to your current working directory. Session state is automatically saved and restored across launches.
 
 ### First Steps
 
@@ -456,6 +463,11 @@ Workspaces let you maintain multiple independent browsing sessions within a sing
 - Preview pane state
 - Tree root path and all expanded directories
 - Horizontal and vertical split proportions
+- Anchor path and active state
+
+### Session Persistence
+
+All workspace state is automatically saved to `~/.config/twin-commander/session.json` when you exit and restored on next launch. This includes all workspaces, their paths, view modes, expanded tree nodes, anchor state, and split proportions. Invalid paths (deleted directories) are gracefully handled by falling back to `$HOME`.
 
 ### Tab Bar
 
@@ -627,7 +639,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | Copy | F5 / c |
 | Move | F6 / m |
 | Rename | F2 / R |
-| Delete | F8 / d |
+| Delete | F8 / dd |
 | Quit | q / Ctrl+C |
 
 ### View (Alt+V)
@@ -656,6 +668,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 
 | Item | Shortcut |
 |------|----------|
+| Anchor | a |
 | Go to Path... | Ctrl+L |
 | Jump to Home | ~ |
 | Jump to Root / | \ |
