@@ -841,6 +841,21 @@ func TestIntegration_RecentDirs(t *testing.T) {
 	}
 }
 
+// TestIntegration_FileDiffRequiresDualPane verifies Ctrl+D shows error in hybrid mode.
+func TestIntegration_FileDiffRequiresDualPane(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Switch to hybrid mode
+	app.ViewMode = ViewHybridTree
+
+	pressKey(app, tcell.KeyCtrlD, 0, tcell.ModNone)
+	// Should not open dialog — requires dual pane
+	if app.DialogActive {
+		t.Error("expected no dialog in hybrid mode")
+	}
+}
+
 // TestIntegration_DiskUsage verifies D opens the disk usage dialog.
 func TestIntegration_DiskUsage(t *testing.T) {
 	dir := setupIntegrationDir(t)

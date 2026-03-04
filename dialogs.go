@@ -318,6 +318,7 @@ func (a *App) showKeybindingsDialog() {
   e        Open in $EDITOR (respects config)
   o        Open with system default (xdg-open)
   b        Beyond Compare
+  Ctrl+D   File diff (compare across panels)
   D        Disk usage (size breakdown)
   :        Run shell command (%f=file, %d=dir, %s=selected)
   Ctrl+G   Git diff
@@ -449,6 +450,271 @@ Beyond Compare, $EDITOR Integration.
 
 	a.Pages.AddPage("about-dialog", overlay, true, true)
 	a.Application.SetFocus(tv)
+}
+
+// showFileDiff compares two files and displays a unified diff.
+func (a *App) showFileDiff() {
+	// Determine the two files to compare
+	var leftPath, rightPath string
+
+	if a.ViewMode == ViewHybridTree {
+		// In hybrid mode, can't easily pick two files — use right panel selected + prompt
+		a.setStatusError("Diff requires dual-pane mode (two panels)")
+		return
+	}
+
+	leftEntry := a.LeftPanel.SelectedEntry()
+	rightEntry := a.RightPanel.SelectedEntry()
+
+	if leftEntry == nil || rightEntry == nil || leftEntry.IsDir || rightEntry.IsDir ||
+		leftEntry.Name == ".." || rightEntry.Name == ".." {
+		a.setStatusError("Select a file in each panel to diff")
+		return
+	}
+
+	leftPath = filepath.Join(a.LeftPanel.Path, leftEntry.Name)
+	rightPath = filepath.Join(a.RightPanel.Path, rightEntry.Name)
+
+	// Read both files
+	leftData, err := os.ReadFile(leftPath)
+	if err != nil {
+		a.setStatusError(fmt.Sprintf("Cannot read %s: %v", leftEntry.Name, err))
+		return
+	}
+	rightData, err := os.ReadFile(rightPath)
+	if err != nil {
+		a.setStatusError(fmt.Sprintf("Cannot read %s: %v", rightEntry.Name, err))
+		return
+	}
+
+	// Check for binary
+	if isBinaryContent(leftData) || isBinaryContent(rightData) {
+		a.setStatusError("Cannot diff binary files")
+		return
+	}
+
+	leftLines := strings.Split(string(leftData), "\n")
+	rightLines := strings.Split(string(rightData), "\n")
+
+	diff := unifiedDiff(leftPath, rightPath, leftLines, rightLines)
+	if diff == "" {
+		diff = "Files are identical."
+	}
+
+	a.DialogActive = true
+	tv := tview.NewTextView().
+		SetDynamicColors(true).
+		SetScrollable(true).
+		SetWrap(false)
+	tv.SetBorder(true)
+	tv.SetTitle(fmt.Sprintf(" Diff: %s ↔ %s ", leftEntry.Name, rightEntry.Name))
+	tv.SetBorderPadding(0, 0, 1, 1)
+
+	// Colorize diff output
+	var colored strings.Builder
+	for _, line := range strings.Split(diff, "\n") {
+		switch {
+		case strings.HasPrefix(line, "---") || strings.HasPrefix(line, "+++"):
+			fmt.Fprintf(&colored, "[yellow]%s[-]\n", tview.Escape(line))
+		case strings.HasPrefix(line, "@@"):
+			fmt.Fprintf(&colored, "[aqua]%s[-]\n", tview.Escape(line))
+		case strings.HasPrefix(line, "-"):
+			fmt.Fprintf(&colored, "[red]%s[-]\n", tview.Escape(line))
+		case strings.HasPrefix(line, "+"):
+			fmt.Fprintf(&colored, "[green]%s[-]\n", tview.Escape(line))
+		default:
+			fmt.Fprintf(&colored, "%s\n", tview.Escape(line))
+		}
+	}
+	tv.SetText(colored.String())
+
+	closeDialog := func() {
+		a.DialogActive = false
+		a.Pages.RemovePage("file-diff")
+		a.restoreFocus()
+	}
+
+	tv.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEscape:
+			closeDialog()
+			return nil
+		case tcell.KeyRune:
+			switch event.Rune() {
+			case 'q':
+				closeDialog()
+				return nil
+			case 'j':
+				row, col := tv.GetScrollOffset()
+				tv.ScrollTo(row+1, col)
+				return nil
+			case 'k':
+				row, col := tv.GetScrollOffset()
+				if row > 0 {
+					tv.ScrollTo(row-1, col)
+				}
+				return nil
+			case 'G':
+				tv.ScrollToEnd()
+				return nil
+			case 'g':
+				tv.ScrollToBeginning()
+				return nil
+			}
+		}
+		return event
+	})
+
+	width := 80
+	height := 30
+	overlay := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(tv, height, 0, true).
+			AddItem(nil, 0, 1, false), width, 0, true).
+		AddItem(nil, 0, 1, false)
+
+	a.Pages.AddPage("file-diff", overlay, true, true)
+	a.Application.SetFocus(tv)
+}
+
+// isBinaryContent checks if data appears to be binary (contains null bytes).
+func isBinaryContent(data []byte) bool {
+	limit := 8000
+	if len(data) < limit {
+		limit = len(data)
+	}
+	for i := 0; i < limit; i++ {
+		if data[i] == 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// unifiedDiff produces a simple unified diff between two sets of lines.
+func unifiedDiff(leftName, rightName string, left, right []string) string {
+	// Simple LCS-based diff
+	m, n := len(left), len(right)
+
+	// Build LCS table (memory-efficient for reasonable file sizes)
+	if m > 10000 || n > 10000 {
+		return "Files too large for inline diff (>10000 lines)"
+	}
+
+	lcs := make([][]int, m+1)
+	for i := range lcs {
+		lcs[i] = make([]int, n+1)
+	}
+	for i := m - 1; i >= 0; i-- {
+		for j := n - 1; j >= 0; j-- {
+			if left[i] == right[j] {
+				lcs[i][j] = lcs[i+1][j+1] + 1
+			} else if lcs[i+1][j] >= lcs[i][j+1] {
+				lcs[i][j] = lcs[i+1][j]
+			} else {
+				lcs[i][j] = lcs[i][j+1]
+			}
+		}
+	}
+
+	// Generate diff hunks
+	type diffLine struct {
+		op   byte // ' ', '+', '-'
+		text string
+		oldN int
+		newN int
+	}
+	var lines []diffLine
+	i, j := 0, 0
+	oldLine, newLine := 1, 1
+	for i < m || j < n {
+		if i < m && j < n && left[i] == right[j] {
+			lines = append(lines, diffLine{' ', left[i], oldLine, newLine})
+			i++
+			j++
+			oldLine++
+			newLine++
+		} else if j < n && (i >= m || lcs[i][j+1] >= lcs[i+1][j]) {
+			lines = append(lines, diffLine{'+', right[j], 0, newLine})
+			j++
+			newLine++
+		} else if i < m {
+			lines = append(lines, diffLine{'-', left[i], oldLine, 0})
+			i++
+			oldLine++
+		}
+	}
+
+	// Group into hunks with context
+	const contextLines = 3
+	var result strings.Builder
+	fmt.Fprintf(&result, "--- %s\n+++ %s\n", leftName, rightName)
+
+	// Find changed regions
+	type hunk struct {
+		start, end int
+	}
+	var hunks []hunk
+	inChange := false
+	changeStart := 0
+	for idx, l := range lines {
+		if l.op != ' ' {
+			if !inChange {
+				changeStart = idx
+				inChange = true
+			}
+		} else {
+			if inChange {
+				hunks = append(hunks, hunk{changeStart, idx})
+				inChange = false
+			}
+		}
+	}
+	if inChange {
+		hunks = append(hunks, hunk{changeStart, len(lines)})
+	}
+
+	// Merge overlapping hunks and add context
+	for _, h := range hunks {
+		start := h.start - contextLines
+		if start < 0 {
+			start = 0
+		}
+		end := h.end + contextLines
+		if end > len(lines) {
+			end = len(lines)
+		}
+
+		// Find old/new line numbers at start
+		oldStart, newStart := 1, 1
+		for idx := 0; idx < start; idx++ {
+			if lines[idx].op != '+' {
+				oldStart++
+			}
+			if lines[idx].op != '-' {
+				newStart++
+			}
+		}
+
+		oldCount, newCount := 0, 0
+		for idx := start; idx < end; idx++ {
+			if lines[idx].op != '+' {
+				oldCount++
+			}
+			if lines[idx].op != '-' {
+				newCount++
+			}
+		}
+
+		fmt.Fprintf(&result, "@@ -%d,%d +%d,%d @@\n", oldStart, oldCount, newStart, newCount)
+		for idx := start; idx < end; idx++ {
+			fmt.Fprintf(&result, "%c%s\n", lines[idx].op, lines[idx].text)
+		}
+	}
+
+	return result.String()
 }
 
 // showDiskUsage displays a sorted breakdown of subdirectory sizes.
