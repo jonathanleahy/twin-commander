@@ -323,6 +323,7 @@ func (a *App) showKeybindingsDialog() {
   o        Open with system default (xdg-open)
   b        Beyond Compare
   Ctrl+D   File diff (compare across panels)
+  Ctrl+K   Directory compare (left vs right)
   D        Disk usage (size breakdown)
   i        File info (details about selected entry)
   :        Run shell command (%f=file, %d=dir, %s=selected)
@@ -1062,6 +1063,48 @@ func (a *App) showFavorites() {
 
 	a.Pages.AddPage("favorites", overlay, true, true)
 	a.Application.SetFocus(list)
+}
+
+// showDirCompare compares left and right panel directories and shows differences.
+func (a *App) showDirCompare() {
+	if a.ViewMode != ViewDualPane {
+		a.setStatusError("Directory compare requires dual-pane mode (Ctrl+T)")
+		return
+	}
+
+	diffs := CompareDirs(a.LeftPanel.Entries, a.RightPanel.Entries)
+	text := FormatDirComparison(diffs, a.LeftPanel.Path, a.RightPanel.Path)
+
+	tv := tview.NewTextView().
+		SetDynamicColors(true).
+		SetText(text)
+	tv.SetBorder(true).
+		SetTitle(" Directory Compare ").
+		SetBorderPadding(1, 1, 2, 2)
+
+	a.DialogActive = true
+	tv.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape || event.Rune() == 'q' {
+			a.DialogActive = false
+			a.Pages.RemovePage("dir-compare")
+			a.restoreFocus()
+			return nil
+		}
+		return event
+	})
+
+	height := 20
+	width := 75
+	overlay := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(tv, height, 0, true).
+			AddItem(nil, 0, 1, false), width, 0, true).
+		AddItem(nil, 0, 1, false)
+
+	a.Pages.AddPage("dir-compare", overlay, true, true)
+	a.Application.SetFocus(tv)
 }
 
 // showFileInfo displays a detailed info dialog for the selected entry.

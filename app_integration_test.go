@@ -991,3 +991,14 @@ func TestIntegration_FavoriteToggle(t *testing.T) {
 		t.Error("expected current dir to be unpinned after second F")
 	}
 }
+
+func TestIntegration_DirCompare(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Already in dual-pane mode from newTestApp
+	pressKey(app, tcell.KeyCtrlK, 0, tcell.ModCtrl)
+	if !app.DialogActive {
+		t.Error("expected dialog active after Ctrl+K")
+	}
+}
