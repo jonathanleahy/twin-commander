@@ -40,6 +40,7 @@ go build -o twin-commander .
 - **Quick jump** — `~` to home (preserves tree state), `\` to root (works in all modes), `Ctrl+L` go to path
 - **Directory history** — browser-style back (`-`) and forward (`=`) navigation
 - **Auto-refresh** — panels refresh automatically when files change on disk (fsnotify)
+- **Directory comparison** — Ctrl+K highlights differences between left and right panels (unique files, size/date changes)
 - **Inline file preview** with syntax highlighting for 14+ languages
 - **Fullscreen viewer** with progressive disclosure (preview → viewer → close)
 - **Menu bar** with keyboard hotkeys (Alt+F/V/S/G/T/O) and vim-style navigation
@@ -176,6 +177,7 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | : | Run shell command (`%f`=file, `%d`=dir, `%s`=selected) |
 | b | Launch Beyond Compare |
 | Ctrl+D | File diff (compare selected files across panels) |
+| Ctrl+K | Directory compare (highlight differences between panels) |
 | D | Disk usage (size breakdown of subdirectories) |
 | i | File info (detailed info about selected entry) |
 | Ctrl+G | Git diff for selected file |

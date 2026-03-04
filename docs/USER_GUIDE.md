@@ -727,6 +727,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | Change Permissions | (menu only) |
 | Beyond Compare | b |
 | File Diff | Ctrl+D |
+| Dir Compare | Ctrl+K |
 | Disk Usage | D |
 | File Info | i |
 | Copy Path | Alt+C |
@@ -831,6 +832,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | `:` | Shell command bar |
 | `b` | Beyond Compare |
 | `Ctrl+D` | File diff (compare across panels) |
+| `Ctrl+K` | Directory compare (left vs right) |
 | `D` | Disk usage (size breakdown) |
 | `i` | File info (detailed info) |
 | `Ctrl+G` | Git diff |

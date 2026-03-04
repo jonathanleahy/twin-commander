@@ -1487,6 +1487,7 @@ func (a *App) buildMenuBar() {
 				{Label: "Change Permissions", Shortcut: "", Action: func() { a.handleChmod() }},
 				{Label: "Beyond Compare", Shortcut: "b", Action: func() { a.handleBComp() }},
 				{Label: "File Diff", Shortcut: "Ctrl+D", Action: func() { a.showFileDiff() }},
+				{Label: "Dir Compare", Shortcut: "Ctrl+K", Action: func() { a.showDirCompare() }},
 				{Label: "Disk Usage", Shortcut: "D", Action: func() { a.showDiskUsage() }},
 				{Label: "File Info", Shortcut: "i", Action: func() { a.showFileInfo() }},
 				{Label: "Copy Path", Shortcut: mod + "+C", Action: func() { a.copyPathToClipboard() }},
