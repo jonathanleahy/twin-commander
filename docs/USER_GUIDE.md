@@ -16,16 +16,17 @@ A comprehensive guide to Twin Commander, a keyboard-driven dual-pane terminal fi
 8. [Searching & Filtering](#searching--filtering)
 9. [Fuzzy Finder](#fuzzy-finder)
 10. [Directory Sizes](#directory-sizes)
-11. [Workspaces](#workspaces)
-12. [Bookmarks](#bookmarks)
-13. [Shell Command Bar](#shell-command-bar)
-14. [Git Integration](#git-integration)
-15. [Themes & Appearance](#themes--appearance)
-16. [Configuration](#configuration)
-17. [Menu Bar Reference](#menu-bar-reference)
-18. [Complete Keyboard Reference](#complete-keyboard-reference)
-19. [macOS Notes](#macos-notes)
-20. [Troubleshooting](#troubleshooting)
+11. [Anchor (Scope Lock)](#anchor-scope-lock)
+12. [Workspaces](#workspaces)
+13. [Bookmarks](#bookmarks)
+14. [Shell Command Bar](#shell-command-bar)
+15. [Git Integration](#git-integration)
+16. [Themes & Appearance](#themes--appearance)
+17. [Configuration](#configuration)
+18. [Menu Bar Reference](#menu-bar-reference)
+19. [Complete Keyboard Reference](#complete-keyboard-reference)
+20. [macOS Notes](#macos-notes)
+21. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -135,6 +136,7 @@ Twin Commander displays icons for 60+ file types and special directories when a 
 | `~` | Jump to `$HOME` (preserves all tree expanded state) |
 | `\` | Jump to `/` root filesystem (works in both modes) |
 | `Ctrl+L` | Go to path — type any absolute path or use `~` for home |
+| `a` | Anchor — lock scope to current directory |
 | `-` | History back (like a browser back button) |
 | `=` | History forward |
 
@@ -400,6 +402,35 @@ Directory sizes are calculated asynchronously in the background. This means the 
 ### Sorting by Size
 
 When you sort by size (`s` to cycle to size mode), directories are sorted by their calculated sizes. Directories whose sizes haven't been calculated yet sort as zero.
+
+---
+
+## Anchor (Scope Lock)
+
+The Anchor feature lets you lock your working scope to a specific directory. When anchored, all searches, fuzzy finder results, and navigation are constrained to the anchored subtree.
+
+### Usage
+
+1. Navigate to the directory you want to scope
+2. Press `a` to anchor — the status bar shows `⚓` and the anchor path
+3. Press `a` again to release the anchor
+
+### What Gets Scoped
+
+When anchored:
+
+- **Recursive search** (`Ctrl+F`): only searches within the anchor directory
+- **Fuzzy finder** (`Ctrl+P`): only indexes files within the anchor directory
+- **Navigate up** (`h` / `Backspace`): stops at the anchor root — you can't go higher
+- **Jump to home** (`~`): jumps to the anchor root instead of `$HOME`
+- **Jump to root** (`\`): jumps to the anchor root instead of `/`
+- **Go to path** (`Ctrl+L`): blocks paths outside the anchor scope
+- **Bookmarks** (`1-9`): blocks bookmarks that point outside the anchor scope
+- **Tree view**: re-roots to the anchor directory in hybrid mode
+
+### Workspace Persistence
+
+Anchor state is saved per workspace. Switching workspaces preserves each workspace's anchor independently.
 
 ---
 
@@ -672,6 +703,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | `G` | Jump to bottom |
 | `~` | Jump to $HOME |
 | `\` | Jump to / |
+| `a` | Anchor (scope lock) |
 | `-` | History back |
 | `=` | History forward |
 | `Ctrl+L` | Go to path |

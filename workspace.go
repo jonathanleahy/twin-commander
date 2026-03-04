@@ -24,8 +24,10 @@ type Workspace struct {
 	ActiveIsLeft     bool
 	HSplit           int
 	VSplit           int
-	TreeRootPath     string
+	TreeRootPath      string
 	TreeExpandedPaths map[string]bool
+	AnchorPath        string `json:"anchor_path"`
+	AnchorActive      bool   `json:"anchor_active"`
 }
 
 // WorkspaceManager manages multiple workspaces with a tab bar.
