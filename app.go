@@ -1427,6 +1427,7 @@ func (a *App) buildMenuBar() {
 				{Label: "Toggle Hidden Files", Shortcut: ".", Action: func() { a.toggleHidden() }},
 				{Label: "Toggle Preview Pane", Shortcut: "t", Action: func() { a.togglePreviewPane() }},
 				{Label: "Toggle Flatten", Shortcut: "W", Action: func() { a.toggleFlattenMode() }},
+				{Label: "Syntax Theme", Shortcut: "T", Action: func() { a.showSyntaxThemeDialog() }},
 				{Label: "Cycle Sort Mode", Shortcut: "s", Action: func() {
 					a.ActivePanel.SortMode = NextSortMode(a.ActivePanel.SortMode)
 					a.ActivePanel.Refresh()

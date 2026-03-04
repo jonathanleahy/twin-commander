@@ -348,6 +348,9 @@ func (a *App) handleNormalModeKey(event *tcell.EventKey) *tcell.EventKey {
 		case 'W':
 			a.toggleFlattenMode()
 			return nil
+		case 'T':
+			a.showSyntaxThemeDialog()
+			return nil
 		case 'D':
 			a.showDiskUsage()
 			return nil

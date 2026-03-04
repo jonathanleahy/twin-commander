@@ -290,6 +290,7 @@ func (a *App) showKeybindingsDialog() {
   s        Cycle sort mode (name/size/date/ext)
   S        Toggle sort order (asc/desc)
   W        Toggle flatten (recursive file list)
+  T        Syntax highlighting theme picker
   r        Refresh
 
 [yellow]Selection[-]
@@ -1063,6 +1064,77 @@ func (a *App) showFavorites() {
 		AddItem(nil, 0, 1, false)
 
 	a.Pages.AddPage("favorites", overlay, true, true)
+	a.Application.SetFocus(list)
+}
+
+// showSyntaxThemeDialog lets the user pick a syntax highlighting theme.
+func (a *App) showSyntaxThemeDialog() {
+	a.DialogActive = true
+	list := tview.NewList()
+	list.SetBorder(true)
+	list.SetTitle(" Syntax Theme ")
+	list.SetBorderPadding(0, 0, 1, 1)
+	list.ShowSecondaryText(false)
+	list.SetHighlightFullLine(true)
+
+	names := SyntaxThemeNames()
+	for i, name := range names {
+		prefix := "  "
+		if name == ActiveSyntaxTheme.Name {
+			prefix = "● "
+		}
+		shortcut := rune(0)
+		if i < 9 {
+			shortcut = rune('1' + i)
+		}
+		list.AddItem(prefix+name, "", shortcut, nil)
+	}
+
+	closeDialog := func() {
+		a.DialogActive = false
+		a.Pages.RemovePage("syntax-theme")
+		a.restoreFocus()
+	}
+
+	list.SetSelectedFunc(func(idx int, _ string, _ string, _ rune) {
+		if idx >= 0 && idx < len(names) {
+			ActiveSyntaxTheme = GetSyntaxTheme(names[idx])
+			closeDialog()
+			a.setStatusError(fmt.Sprintf("Syntax theme: %s", names[idx]))
+			// Re-render preview if active
+			if a.PreviewActive {
+				a.updatePreview()
+			}
+		}
+	})
+
+	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEscape:
+			closeDialog()
+			return nil
+		case tcell.KeyRune:
+			switch event.Rune() {
+			case 'j':
+				return tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone)
+			case 'k':
+				return tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
+			}
+		}
+		return event
+	})
+
+	height := len(names) + 4
+	width := 30
+	overlay := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(list, height, 0, true).
+			AddItem(nil, 0, 1, false), width, 0, true).
+		AddItem(nil, 0, 1, false)
+
+	a.Pages.AddPage("syntax-theme", overlay, true, true)
 	a.Application.SetFocus(list)
 }
 

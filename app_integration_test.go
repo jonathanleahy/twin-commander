@@ -1029,3 +1029,13 @@ func TestIntegration_FlattenMode(t *testing.T) {
 		t.Error("expected FlattenMode to be false after second W")
 	}
 }
+
+func TestIntegration_SyntaxThemePicker(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	pressRune(app, 'T')
+	if !app.DialogActive {
+		t.Error("expected dialog active after T")
+	}
+}
