@@ -206,6 +206,18 @@ func NewApp(startPath string) *App {
 
 	app.setupFuzzyHandlers()
 
+	// Create directory jump UI
+	app.GoDirInput = tview.NewInputField().
+		SetLabel(" Dir: ").
+		SetFieldWidth(0)
+	app.GoDirTable = tview.NewTable().
+		SetSelectable(true, false)
+	app.GoDirTable.SetBorder(true)
+	app.GoDirTable.SetTitle("Directory Jump")
+	app.GoDirTable.SetBorderPadding(0, 0, 1, 1)
+
+	app.setupGoDirHandlers()
+
 	// Create inline preview pane with scrollbar (before applyConfig which themes it)
 	app.PreviewPane = tview.NewTextView().
 		SetDynamicColors(true).
@@ -564,6 +576,11 @@ func (a *App) buildLayout() {
 		AddItem(a.FuzzyInput, 1, 0, true).
 		AddItem(a.FuzzyTable, 0, 1, false)
 
+	// Directory jump overlay
+	godirFlex := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(a.GoDirInput, 1, 0, true).
+		AddItem(a.GoDirTable, 0, 1, false)
+
 	// Viewer layout: menu bar on top, viewer below
 	viewerRoot := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(a.MenuBar.Bar, 1, 0, false).
@@ -575,6 +592,7 @@ func (a *App) buildLayout() {
 	a.Pages.AddPage("viewer", viewerRoot, true, false)
 	a.Pages.AddPage("search", searchFlex, true, false)
 	a.Pages.AddPage("fuzzy", fuzzyFlex, true, false)
+	a.Pages.AddPage("godir", godirFlex, true, false)
 }
 
 // setInitialFocus sets focus based on current view mode.
@@ -1401,6 +1419,7 @@ func (a *App) buildMenuBar() {
 			Items: []MenuItem{
 				{Label: "Anchor", Shortcut: "a", Action: func() { a.toggleAnchor() }},
 				{Label: "Go to Path...", Shortcut: "Ctrl+L", Action: func() { a.showGoToPathDialog() }},
+				{Label: "Directory Jump", Shortcut: "gd", Action: func() { a.enterGoDirMode() }},
 				{Label: "Jump to Home", Shortcut: "~", Action: func() { a.jumpToHome() }},
 				{Label: "Jump to Root /", Shortcut: "\\", Action: func() { a.jumpToRoot() }},
 				{Label: "History Back", Shortcut: "-", Action: func() { a.handleHistoryBack() }},
@@ -1911,6 +1930,120 @@ func (a *App) navigateToFuzzyResult() {
 				break
 			}
 		}
+	}
+
+	a.updateStatusBars()
+}
+
+// setupGoDirHandlers configures the directory jump input with debounced search.
+func (a *App) setupGoDirHandlers() {
+	var debounceTimer *time.Timer
+
+	a.GoDirInput.SetChangedFunc(func(text string) {
+		if debounceTimer != nil {
+			debounceTimer.Stop()
+		}
+		debounceTimer = time.AfterFunc(150*time.Millisecond, func() {
+			a.Application.QueueUpdateDraw(func() {
+				a.runGoDirSearch(text)
+			})
+		})
+	})
+}
+
+// enterGoDirMode activates the directory jump overlay.
+func (a *App) enterGoDirMode() {
+	a.GoDirMode = true
+	a.GoDirInput.SetText("")
+	a.GoDirTable.Clear()
+	a.Pages.SwitchToPage("godir")
+	a.Application.SetFocus(a.GoDirInput)
+}
+
+// exitGoDirMode returns from directory jump to the previous view.
+func (a *App) exitGoDirMode() {
+	a.GoDirMode = false
+	if a.GoDirCancel != nil {
+		close(a.GoDirCancel)
+		a.GoDirCancel = nil
+	}
+	if a.ViewMode == ViewHybridTree {
+		a.Pages.SwitchToPage("hybrid")
+		if a.TreeFocused {
+			a.Application.SetFocus(a.TreePanel.TreeView)
+		} else {
+			a.Application.SetFocus(a.RightPanel.Table)
+		}
+	} else {
+		a.Pages.SwitchToPage("dual")
+		a.Application.SetFocus(a.ActivePanel.Table)
+	}
+}
+
+// runGoDirSearch executes a directory-only fuzzy search with the given query.
+func (a *App) runGoDirSearch(query string) {
+	if a.GoDirCancel != nil {
+		close(a.GoDirCancel)
+	}
+	a.GoDirCancel = make(chan struct{})
+	cancelCh := a.GoDirCancel
+
+	a.GoDirTable.Clear()
+
+	if query == "" {
+		return
+	}
+
+	rootDir := a.anchoredRoot()
+
+	resultCh := make(chan FuzzyResult, 100)
+	go FuzzySearch(FuzzySearchOpts{
+		RootDir:    rootDir,
+		Pattern:    query,
+		MaxResults: 200,
+		ShowHidden: a.ActivePanel.ShowHidden,
+		DirsOnly:   true,
+	}, resultCh, cancelCh)
+
+	go func() {
+		row := 0
+		for result := range resultCh {
+			r := result
+			rowIdx := row
+			a.Application.QueueUpdateDraw(func() {
+				style := tcell.StyleDefault.Foreground(tcell.ColorBlue).Bold(true)
+				a.GoDirTable.SetCell(rowIdx, 0,
+					tview.NewTableCell(r.RelPath).
+						SetStyle(style).
+						SetReference(r.Path))
+			})
+			row++
+		}
+	}()
+}
+
+// navigateToGoDirResult opens the selected directory from the directory jump results.
+func (a *App) navigateToGoDirResult() {
+	row, _ := a.GoDirTable.GetSelection()
+	cell := a.GoDirTable.GetCell(row, 0)
+	if cell == nil {
+		return
+	}
+	ref := cell.GetReference()
+	if ref == nil {
+		return
+	}
+	fullPath := ref.(string)
+
+	a.exitGoDirMode()
+
+	if a.ViewMode == ViewHybridTree {
+		a.TreePanel.NavigateToPath(fullPath)
+		a.RightPanel.Path = fullPath
+		a.RightPanel.LoadDir()
+	} else {
+		a.ActivePanel.Path = fullPath
+		a.ActivePanel.LoadDir()
 	}
 
 	a.updateStatusBars()

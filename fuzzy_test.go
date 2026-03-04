@@ -258,3 +258,45 @@ func TestFuzzySearch_DirectoryResults(t *testing.T) {
 		t.Error("expected at least one file result")
 	}
 }
+
+func TestFuzzySearch_DirsOnly(t *testing.T) {
+	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, "mydir"), 0755)
+	os.MkdirAll(filepath.Join(dir, "other"), 0755)
+	os.WriteFile(filepath.Join(dir, "myfile.txt"), []byte("data"), 0644)
+	os.WriteFile(filepath.Join(dir, "mydir", "inner.txt"), []byte("data"), 0644)
+
+	results := make(chan FuzzyResult, 100)
+	cancel := make(chan struct{})
+	go FuzzySearch(FuzzySearchOpts{
+		RootDir:    dir,
+		Pattern:    "my",
+		MaxResults: 10,
+		ShowHidden: false,
+		DirsOnly:   true,
+	}, results, cancel)
+
+	var found []FuzzyResult
+	for r := range results {
+		found = append(found, r)
+	}
+
+	if len(found) == 0 {
+		t.Fatal("expected at least one directory result")
+	}
+	for _, r := range found {
+		if !r.IsDir {
+			t.Errorf("expected only directories with DirsOnly=true, got file: %s", r.RelPath)
+		}
+	}
+	// "mydir" should be in the results
+	foundMyDir := false
+	for _, r := range found {
+		if r.RelPath == "mydir" {
+			foundMyDir = true
+		}
+	}
+	if !foundMyDir {
+		t.Error("expected 'mydir' in results")
+	}
+}

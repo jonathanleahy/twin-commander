@@ -275,6 +275,7 @@ func (a *App) showKeybindingsDialog() {
   -               History back
   =               History forward
   Ctrl+L          Go to path...
+  gd              Directory jump (fuzzy)
   Tab             Switch active pane (forward)
   Shift+Tab       Switch active pane (backward)
 

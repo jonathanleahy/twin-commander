@@ -754,3 +754,61 @@ func TestIntegration_IsPathInScope(t *testing.T) {
 		t.Error("anchor path itself should be in scope")
 	}
 }
+
+// TestIntegration_GoDirModeActivation verifies gd enters directory jump mode and Esc exits.
+func TestIntegration_GoDirModeActivation(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	if app.GoDirMode {
+		t.Fatal("godir mode should not be active initially")
+	}
+
+	// gd should enter directory jump mode
+	pressRune(app, 'g')
+	pressRune(app, 'd')
+	if !app.GoDirMode {
+		t.Error("expected godir mode active after gd")
+	}
+
+	// Escape should exit godir mode
+	pressKey(app, tcell.KeyEscape, 0, tcell.ModNone)
+	if app.GoDirMode {
+		t.Error("expected godir mode inactive after Escape")
+	}
+}
+
+// TestIntegration_GoDirNavigates verifies selecting a result navigates to that directory.
+func TestIntegration_GoDirNavigates(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Create a subdirectory to navigate to
+	targetDir := filepath.Join(dir, "alpha")
+
+	// Enter godir mode
+	pressRune(app, 'g')
+	pressRune(app, 'd')
+	if !app.GoDirMode {
+		t.Fatal("expected godir mode active")
+	}
+
+	// Simulate adding a result directly (since async search won't run in tests)
+	app.GoDirTable.SetCell(0, 0,
+		tview.NewTableCell("alpha").
+			SetReference(targetDir))
+
+	// Focus on table and select
+	app.Application.SetFocus(app.GoDirTable)
+	app.GoDirTable.Select(0, 0)
+
+	// Press Enter to navigate
+	pressKey(app, tcell.KeyEnter, 0, tcell.ModNone)
+
+	if app.GoDirMode {
+		t.Error("expected godir mode to be closed after navigating")
+	}
+	if app.ActivePanel.Path != targetDir {
+		t.Errorf("expected panel path %q, got %q", targetDir, app.ActivePanel.Path)
+	}
+}

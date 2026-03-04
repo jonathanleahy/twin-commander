@@ -67,6 +67,12 @@ type App struct {
 	FuzzyTable  *tview.Table
 	FuzzyCancel chan struct{}
 
+	// Directory jump (fuzzy dir finder) state
+	GoDirMode   bool
+	GoDirInput  *tview.InputField
+	GoDirTable  *tview.Table
+	GoDirCancel chan struct{}
+
 	// Directory size cache
 	DirSizeCache *DirSizeCache
 
@@ -148,6 +154,9 @@ func (a *App) handleKeyEvent(event *tcell.EventKey) *tcell.EventKey {
 	}
 	if a.FuzzyMode {
 		return a.handleFuzzyKey(event)
+	}
+	if a.GoDirMode {
+		return a.handleGoDirKey(event)
 	}
 	if a.FilterMode {
 		return a.handleFilterModeKey(event)
@@ -500,6 +509,42 @@ func (a *App) handleFuzzyKey(event *tcell.EventKey) *tcell.EventKey {
 	return event
 }
 
+// handleGoDirKey handles keys when directory jump mode is active.
+func (a *App) handleGoDirKey(event *tcell.EventKey) *tcell.EventKey {
+	switch event.Key() {
+	case tcell.KeyEscape:
+		a.exitGoDirMode()
+		return nil
+	case tcell.KeyTab:
+		if a.Application.GetFocus() == a.GoDirInput {
+			a.Application.SetFocus(a.GoDirTable)
+		} else {
+			a.Application.SetFocus(a.GoDirInput)
+		}
+		return nil
+	case tcell.KeyEnter:
+		if a.Application.GetFocus() == a.GoDirTable {
+			a.navigateToGoDirResult()
+			return nil
+		}
+		if a.GoDirTable.GetRowCount() > 0 {
+			a.Application.SetFocus(a.GoDirTable)
+			a.GoDirTable.Select(0, 0)
+		}
+		return nil
+	case tcell.KeyRune:
+		if a.Application.GetFocus() == a.GoDirTable {
+			switch event.Rune() {
+			case 'j':
+				return tcell.NewEventKey(tcell.KeyDown, 0, tcell.ModNone)
+			case 'k':
+				return tcell.NewEventKey(tcell.KeyUp, 0, tcell.ModNone)
+			}
+		}
+	}
+	return event
+}
+
 // navigateToSearchResult opens the directory containing the selected search result.
 // handleFilterModeKey handles keys in filter mode.
 func (a *App) handleFilterModeKey(event *tcell.EventKey) *tcell.EventKey {
@@ -518,6 +563,8 @@ func (a *App) handleKeyAction(action KeyAction) {
 		a.handleYank()
 	case KeyActionGitStage:
 		a.handleGitStage()
+	case KeyActionGoDir:
+		a.enterGoDirMode()
 	}
 }
 
@@ -610,7 +657,7 @@ func (a *App) handleMouseEvent(event *tcell.EventMouse, action tview.MouseAction
 	}
 
 	// Don't interfere with dialogs or overlays
-	if a.DialogActive || a.ViewerActive || a.SearchMode || a.FilterMode || a.FuzzyMode {
+	if a.DialogActive || a.ViewerActive || a.SearchMode || a.FilterMode || a.FuzzyMode || a.GoDirMode {
 		return event, action
 	}
 
