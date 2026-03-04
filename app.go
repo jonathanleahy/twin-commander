@@ -1376,6 +1376,7 @@ func (a *App) buildMenuBar() {
 				{Label: "Move", Shortcut: "F6 / m", Action: func() { a.handleMove() }},
 				{Label: "Rename", Shortcut: "F2 / R", Action: func() { a.handleRename() }},
 				{Label: "Bulk Rename", Shortcut: "%", Action: func() { a.handleBulkRename() }},
+				{Label: "Create Symlink", Shortcut: "L", Action: func() { a.handleSymlink() }},
 				{Label: "Delete", Shortcut: "F8 / d", Action: func() { a.handleDelete() }},
 				{Label: "Quit", Shortcut: "q / Ctrl+C", Action: func() { a.Application.Stop() }},
 			},

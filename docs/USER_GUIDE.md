@@ -306,6 +306,7 @@ All file operations are multi-select aware. If files are selected, the operation
 | `F8` / `dd` | **Delete** (trash or permanent, configurable) |
 | `F2` / `R` | **Rename** current file/directory |
 | `%` | **Bulk rename** — find/replace in selected filenames |
+| `L` | **Create symlink** to selected entry |
 | `yy` | **Yank** — mark for copy (vim-style) |
 | `p` | **Paste** yanked files |
 
@@ -805,6 +806,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | `F8` / `dd` | Delete (trash or permanent) |
 | `F2` / `R` | Rename |
 | `%` | Bulk rename (find/replace) |
+| `L` | Create symlink |
 | `yy` | Yank (mark for copy) |
 | `p` | Paste yanked files |
 

@@ -157,6 +157,7 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | F7 / n | Create new directory (path traversal protected) |
 | N | Create new empty file |
 | % | Bulk rename (find/replace in selected filenames) |
+| L | Create symlink to selected entry |
 | F8 / dd | Delete — trash or permanent (multi-select aware) |
 | F2 / R | Rename (path traversal protected) |
 | yy | Yank — mark for copy (multi-select aware) |
