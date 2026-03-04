@@ -326,6 +326,7 @@ func (a *App) showKeybindingsDialog() {
   :        Run shell command (%f=file, %d=dir, %s=selected)
   Ctrl+G   Git diff
   gs       Git stage/unstage
+  Ctrl+V   Paste files from system clipboard
 
 [yellow]Resize[-]
   ` + mod + `+Left/Right  Adjust horizontal split

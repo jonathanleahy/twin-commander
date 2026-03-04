@@ -557,9 +557,72 @@ func (a *App) handlePaste() {
 	a.setStatusError(fmt.Sprintf("Pasted %d item(s)", len(a.YankBuffer)))
 }
 
-// handleBComp launches Beyond Compare with the selected files from each pane.
-// copyPathToClipboard copies the selected file/folder's full path to the system clipboard.
-// handleBComp launches Beyond Compare with the selected files from each pane.
+// handleClipboardPaste reads file paths from the system clipboard and copies them
+// into the active panel's directory.
+func (a *App) handleClipboardPaste() {
+	text, err := ReadFromClipboard()
+	if err != nil {
+		a.setStatusError("No clipboard tool found (install xclip)")
+		return
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		a.setStatusError("Clipboard is empty")
+		return
+	}
+
+	// Parse clipboard lines as file paths
+	var paths []string
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		// Strip file:// URI prefix
+		line = strings.TrimPrefix(line, "file://")
+		if line == "" {
+			continue
+		}
+		if _, err := os.Stat(line); err == nil {
+			paths = append(paths, line)
+		}
+	}
+
+	if len(paths) == 0 {
+		a.setStatusError("No valid file paths in clipboard")
+		return
+	}
+
+	dstDir := a.ActivePanel.Path
+	var errors []string
+	copied := 0
+	for _, src := range paths {
+		dst := filepath.Join(dstDir, filepath.Base(src))
+		info, err := os.Stat(src)
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("%s: %v", filepath.Base(src), err))
+			continue
+		}
+		if info.IsDir() {
+			if err := CopyDir(src, dst); err != nil {
+				errors = append(errors, fmt.Sprintf("%s: %v", filepath.Base(src), err))
+			} else {
+				copied++
+			}
+		} else {
+			if err := CopyFile(src, dst); err != nil {
+				errors = append(errors, fmt.Sprintf("%s: %v", filepath.Base(src), err))
+			} else {
+				copied++
+			}
+		}
+	}
+
+	a.refreshAllPanels()
+	if len(errors) > 0 {
+		a.setStatusError(fmt.Sprintf("Pasted %d, errors: %s", copied, strings.Join(errors, "; ")))
+	} else {
+		a.setStatusError(fmt.Sprintf("Pasted %d file(s) from clipboard", copied))
+	}
+}
+
 // copyPathToClipboard copies the selected file/folder's full path to the system clipboard.
 func (a *App) copyPathToClipboard() {
 	var path string

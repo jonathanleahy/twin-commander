@@ -249,6 +249,9 @@ func (a *App) handleNormalModeKey(event *tcell.EventKey) *tcell.EventKey {
 	case tcell.KeyCtrlD:
 		a.showFileDiff()
 		return nil
+	case tcell.KeyCtrlV:
+		a.handleClipboardPaste()
+		return nil
 	case tcell.KeyCtrlL:
 		a.showGoToPathDialog()
 		return nil

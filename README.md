@@ -178,6 +178,7 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | Ctrl+G | Git diff for selected file |
 | gs | Git stage/unstage |
 | Alt+C (Opt+C on Mac) | Copy path to clipboard |
+| Ctrl+V | Paste files from system clipboard |
 
 #### Resize
 
