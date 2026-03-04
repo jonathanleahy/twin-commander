@@ -153,6 +153,29 @@ func GitStatusColor(status string) (tcell.Color, bool) {
 	return 0, false
 }
 
+// GitStatusLabel returns a short human-readable label for a git status code.
+func GitStatusLabel(status string) string {
+	if len(status) < 2 {
+		return ""
+	}
+	switch {
+	case status == "??":
+		return "?"
+	case status[0] == 'A':
+		return "A"
+	case status[0] == 'M' || status[1] == 'M':
+		return "M"
+	case status[0] == 'D' || status[1] == 'D':
+		return "D"
+	case status[0] == 'R':
+		return "R"
+	case status[0] == 'C':
+		return "C"
+	default:
+		return string(status[0])
+	}
+}
+
 // statusPriority returns a priority score for sorting statuses.
 func statusPriority(status string) int {
 	if len(status) < 2 {

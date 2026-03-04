@@ -572,6 +572,7 @@ When inside a git repository, Twin Commander provides:
   - Red — deleted
   - Yellow — renamed
   - Gray — untracked
+- **Git status column** — shows M/A/D/R/? markers next to files with git changes
 - **Directory status** — aggregated from all contained files
 
 ### Git Commands

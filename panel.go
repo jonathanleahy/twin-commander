@@ -177,6 +177,28 @@ func (p *Panel) renderTable() {
 		dateCell := tview.NewTableCell(dateText).
 			SetAlign(tview.AlignLeft)
 		p.Table.SetCell(i, 3, dateCell)
+
+		// Git status column
+		var gitText string
+		var gitStyle tcell.Style
+		if p.GitRepo != nil && e.Name != ".." {
+			var status string
+			if e.IsDir {
+				relDir := p.GitRepo.RelPath(filepath.Join(p.Path, e.Name))
+				status = p.GitRepo.GetDirStatus(relDir)
+			} else {
+				relPath := p.GitRepo.RelPath(filepath.Join(p.Path, e.Name))
+				status = p.GitRepo.GetFileStatus(relPath)
+			}
+			gitText = GitStatusLabel(status)
+			if color, hasColor := GitStatusColor(status); hasColor {
+				gitStyle = tcell.StyleDefault.Foreground(color)
+			}
+		}
+		gitCell := tview.NewTableCell(gitText).
+			SetStyle(gitStyle).
+			SetAlign(tview.AlignCenter)
+		p.Table.SetCell(i, 4, gitCell)
 	}
 
 	p.Table.ScrollToBeginning()
