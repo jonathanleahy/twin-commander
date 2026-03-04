@@ -917,3 +917,27 @@ func TestIntegration_SymlinkOnDotDot(t *testing.T) {
 		t.Error("expected no dialog when cursor is on ..")
 	}
 }
+
+func TestIntegration_FileInfo(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Move to first real entry
+	pressRune(app, 'j')
+
+	pressRune(app, 'i')
+	if !app.DialogActive {
+		t.Error("expected dialog active after i")
+	}
+}
+
+func TestIntegration_FileInfoOnDotDot(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Cursor is on ".." — i should do nothing
+	pressRune(app, 'i')
+	if app.DialogActive {
+		t.Error("expected no dialog when cursor is on ..")
+	}
+}

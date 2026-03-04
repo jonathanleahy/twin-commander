@@ -719,6 +719,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | Beyond Compare | b |
 | File Diff | Ctrl+D |
 | Disk Usage | D |
+| File Info | i |
 | Copy Path | Alt+C |
 | Git Diff | Ctrl+G |
 | Git Stage/Unstage | gs |
@@ -820,6 +821,7 @@ Open any menu with its Alt+hotkey, or press `F9`/`F10` to activate the menu bar.
 | `b` | Beyond Compare |
 | `Ctrl+D` | File diff (compare across panels) |
 | `D` | Disk usage (size breakdown) |
+| `i` | File info (detailed info) |
 | `Ctrl+G` | Git diff |
 | `gs` | Git stage/unstage |
 | `Alt+C` | Copy path to clipboard |

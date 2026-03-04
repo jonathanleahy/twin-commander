@@ -173,6 +173,7 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | b | Launch Beyond Compare |
 | Ctrl+D | File diff (compare selected files across panels) |
 | D | Disk usage (size breakdown of subdirectories) |
+| i | File info (detailed info about selected entry) |
 | Ctrl+G | Git diff for selected file |
 | gs | Git stage/unstage |
 | Alt+C (Opt+C on Mac) | Copy path to clipboard |

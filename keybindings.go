@@ -327,6 +327,9 @@ func (a *App) handleNormalModeKey(event *tcell.EventKey) *tcell.EventKey {
 		case 'L':
 			a.handleSymlink()
 			return nil
+		case 'i':
+			a.showFileInfo()
+			return nil
 		case 'D':
 			a.showDiskUsage()
 			return nil

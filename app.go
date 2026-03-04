@@ -1448,6 +1448,7 @@ func (a *App) buildMenuBar() {
 				{Label: "Beyond Compare", Shortcut: "b", Action: func() { a.handleBComp() }},
 				{Label: "File Diff", Shortcut: "Ctrl+D", Action: func() { a.showFileDiff() }},
 				{Label: "Disk Usage", Shortcut: "D", Action: func() { a.showDiskUsage() }},
+				{Label: "File Info", Shortcut: "i", Action: func() { a.showFileInfo() }},
 				{Label: "Copy Path", Shortcut: mod + "+C", Action: func() { a.copyPathToClipboard() }},
 				{Label: "Git Diff", Shortcut: "Ctrl+G", Action: func() { a.handleGitDiff() }},
 				{Label: "Git Stage/Unstage", Shortcut: "gs", Action: func() { a.handleGitStage() }},
