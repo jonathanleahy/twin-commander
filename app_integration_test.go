@@ -596,3 +596,161 @@ func TestIntegration_WorkspaceSwitchPreservesPath(t *testing.T) {
 		t.Errorf("workspace 2 should be at %q, got %q", dir, app.ActivePanel.Path)
 	}
 }
+
+// TestIntegration_AnchorToggle verifies 'a' anchors and un-anchors.
+func TestIntegration_AnchorToggle(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	if app.AnchorActive {
+		t.Fatal("anchor should not be active initially")
+	}
+
+	// Press 'a' to anchor
+	pressRune(app, 'a')
+	if !app.AnchorActive {
+		t.Error("expected anchor active after 'a'")
+	}
+	if app.AnchorPath != dir {
+		t.Errorf("expected anchor path %q, got %q", dir, app.AnchorPath)
+	}
+
+	// Press 'a' again to release
+	pressRune(app, 'a')
+	if app.AnchorActive {
+		t.Error("expected anchor released after second 'a'")
+	}
+	if app.AnchorPath != "" {
+		t.Errorf("expected empty anchor path, got %q", app.AnchorPath)
+	}
+}
+
+// TestIntegration_AnchorBlocksNavigateUp verifies anchor prevents navigating above anchor path.
+func TestIntegration_AnchorBlocksNavigateUp(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Anchor at current dir
+	pressRune(app, 'a')
+	if !app.AnchorActive {
+		t.Fatal("expected anchor active")
+	}
+
+	// Try to navigate up — should be blocked
+	pressRune(app, 'h')
+	if app.ActivePanel.Path != dir {
+		t.Errorf("expected path unchanged at %q, got %q", dir, app.ActivePanel.Path)
+	}
+}
+
+// TestIntegration_AnchorNavigateWithinScope verifies navigation works within anchor scope.
+func TestIntegration_AnchorNavigateWithinScope(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Anchor at current dir
+	pressRune(app, 'a')
+
+	// Navigate into alpha (should work)
+	pressRune(app, 'j') // alpha
+	pressRune(app, 'l') // enter alpha
+	alphaPath := filepath.Join(dir, "alpha")
+	if app.ActivePanel.Path != alphaPath {
+		t.Errorf("expected path %q after entering alpha, got %q", alphaPath, app.ActivePanel.Path)
+	}
+
+	// Navigate back up to anchor root (should work)
+	pressRune(app, 'h')
+	if app.ActivePanel.Path != dir {
+		t.Errorf("expected path %q after 'h', got %q", dir, app.ActivePanel.Path)
+	}
+
+	// Try to navigate above anchor root — should be blocked
+	pressRune(app, 'h')
+	if app.ActivePanel.Path != dir {
+		t.Errorf("anchor should block navigation above root, path is %q", app.ActivePanel.Path)
+	}
+}
+
+// TestIntegration_AnchorBookmarkOutsideScope verifies bookmark outside anchor is blocked.
+func TestIntegration_AnchorBookmarkOutsideScope(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Add a bookmark to /tmp
+	app.Bookmarks.Add("/tmp")
+
+	// Anchor at dir
+	pressRune(app, 'a')
+
+	// Try to jump to bookmark — should be blocked
+	originalPath := app.ActivePanel.Path
+	pressRune(app, '1')
+	if app.ActivePanel.Path != originalPath {
+		t.Errorf("expected path unchanged at %q, got %q (bookmark should be blocked)", originalPath, app.ActivePanel.Path)
+	}
+}
+
+// TestIntegration_AnchorWorkspacePersistence verifies anchor state persists across workspace switches.
+func TestIntegration_AnchorWorkspacePersistence(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Anchor in workspace 1
+	pressRune(app, 'a')
+	if !app.AnchorActive {
+		t.Fatal("expected anchor active")
+	}
+
+	// Create workspace 2
+	pressKey(app, tcell.KeyCtrlN, 0, tcell.ModNone)
+	// Workspace 2 should inherit anchor state
+	if !app.AnchorActive {
+		t.Error("expected anchor active in new workspace")
+	}
+
+	// Release anchor in workspace 2
+	pressRune(app, 'a')
+	if app.AnchorActive {
+		t.Error("expected anchor released in workspace 2")
+	}
+
+	// Switch back to workspace 1 — should still have anchor
+	pressKey(app, tcell.KeyRune, '1', tcell.ModAlt)
+	if !app.AnchorActive {
+		t.Error("expected anchor still active in workspace 1")
+	}
+	if app.AnchorPath != dir {
+		t.Errorf("expected anchor path %q in workspace 1, got %q", dir, app.AnchorPath)
+	}
+}
+
+// TestIntegration_IsPathInScope verifies scope checking logic.
+func TestIntegration_IsPathInScope(t *testing.T) {
+	dir := setupIntegrationDir(t)
+	app := newTestApp(t, dir)
+
+	// Without anchor, everything is in scope
+	if !app.isPathInScope("/tmp") {
+		t.Error("without anchor, all paths should be in scope")
+	}
+
+	// Set anchor
+	app.AnchorActive = true
+	app.AnchorPath = dir
+
+	// Path within scope
+	if !app.isPathInScope(filepath.Join(dir, "alpha")) {
+		t.Error("subdir should be in scope")
+	}
+
+	// Path outside scope
+	if app.isPathInScope("/tmp") {
+		t.Error("/tmp should be outside scope")
+	}
+
+	// Anchor path itself should be in scope
+	if !app.isPathInScope(dir) {
+		t.Error("anchor path itself should be in scope")
+	}
+}

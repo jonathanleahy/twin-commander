@@ -95,6 +95,30 @@ func TestWorkspaceManager_AddAutoName(t *testing.T) {
 	}
 }
 
+func TestWorkspace_AnchorRoundTrip(t *testing.T) {
+	ws := &Workspace{
+		Name:         "test",
+		AnchorPath:   "/home/user/project",
+		AnchorActive: true,
+	}
+	if ws.AnchorPath != "/home/user/project" {
+		t.Errorf("expected anchor path '/home/user/project', got %q", ws.AnchorPath)
+	}
+	if !ws.AnchorActive {
+		t.Error("expected anchor active to be true")
+	}
+
+	// Simulate clearing anchor
+	ws.AnchorActive = false
+	ws.AnchorPath = ""
+	if ws.AnchorActive {
+		t.Error("expected anchor active to be false after clear")
+	}
+	if ws.AnchorPath != "" {
+		t.Errorf("expected empty anchor path after clear, got %q", ws.AnchorPath)
+	}
+}
+
 func TestWorkspaceManager_RenderTabBar(t *testing.T) {
 	wm := NewWorkspaceManager()
 	wm.AddWorkspace("B")

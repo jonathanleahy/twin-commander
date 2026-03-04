@@ -95,6 +95,7 @@ The default view is **hybrid tree mode**: a persistent directory tree on the lef
 | G | Jump to bottom |
 | ~ | Jump to $HOME (preserves tree expanded state) |
 | \ | Jump to / (works in both tree and dual-pane mode) |
+| a | Anchor — lock scope to current directory |
 | - | History back |
 | = | History forward |
 | Ctrl+L | Go to path (input dialog) |

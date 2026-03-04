@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
@@ -279,6 +280,10 @@ func NewApp(startPath string) *App {
 }
 
 func (a *App) jumpToBookmark(path string) {
+	if a.AnchorActive && !a.isPathInScope(path) {
+		a.setStatusError("Bookmark outside anchor scope")
+		return
+	}
 	if a.ViewMode == ViewHybridTree {
 		a.TreePanel.NavigateToPath(path)
 		a.RightPanel.Path = path
@@ -296,6 +301,62 @@ func (a *App) jumpToBookmarkNum(idx int) {
 	if path != "" {
 		a.jumpToBookmark(path)
 	}
+}
+
+// toggleAnchor locks or unlocks scope to the current directory.
+func (a *App) toggleAnchor() {
+	if a.AnchorActive {
+		a.AnchorActive = false
+		a.AnchorPath = ""
+		// Restore tree root per config preference
+		if a.ViewMode == ViewHybridTree {
+			root := ""
+			if a.Config.TreeRoot == "/" {
+				root = "/"
+			} else {
+				if home, err := os.UserHomeDir(); err == nil {
+					root = home
+				} else {
+					root = "/"
+				}
+			}
+			a.TreePanel.SetRootPath(root)
+		}
+		a.setStatusError("Anchor released")
+	} else {
+		// Determine current directory
+		dir := a.ActivePanel.Path
+		if a.ViewMode == ViewHybridTree && a.TreeFocused {
+			dir = a.TreePanel.SelectedPath()
+		}
+		a.AnchorPath = filepath.Clean(dir)
+		a.AnchorActive = true
+		// Re-root tree to anchor path in hybrid mode
+		if a.ViewMode == ViewHybridTree {
+			a.TreePanel.SetRootPath(a.AnchorPath)
+		}
+		a.setStatusError("⚓ Anchored to " + a.AnchorPath)
+	}
+	a.updateStatusBars()
+}
+
+// anchoredRoot returns the search root directory, respecting anchor scope.
+func (a *App) anchoredRoot() string {
+	if a.AnchorActive {
+		return a.AnchorPath
+	}
+	if a.ViewMode == ViewHybridTree {
+		return a.TreePanel.RootPath
+	}
+	return a.ActivePanel.Path
+}
+
+// isPathInScope returns true if the path is within the anchor scope (or anchor is inactive).
+func (a *App) isPathInScope(path string) bool {
+	if !a.AnchorActive {
+		return true
+	}
+	return strings.HasPrefix(filepath.Clean(path), filepath.Clean(a.AnchorPath))
 }
 
 // saveBookmarks persists bookmarks to the config file.
@@ -692,10 +753,7 @@ func (a *App) runSearch(query string) {
 		return
 	}
 
-	rootDir := a.ActivePanel.Path
-	if a.ViewMode == ViewHybridTree {
-		rootDir = a.TreePanel.RootPath
-	}
+	rootDir := a.anchoredRoot()
 
 	resultCh := make(chan SearchResult, 100)
 	go Search(SearchOpts{
@@ -946,6 +1004,17 @@ func (a *App) switchPanelReverse() {
 // navigateUp handles Backspace/h in normal mode.
 // In tree mode: collapse expanded node, or move cursor to parent.
 func (a *App) navigateUp() {
+	// Anchor guard: don't navigate above anchor path
+	if a.AnchorActive {
+		if a.ViewMode == ViewHybridTree && a.TreeFocused {
+			if filepath.Clean(a.TreePanel.SelectedPath()) == filepath.Clean(a.AnchorPath) {
+				return
+			}
+		} else if filepath.Clean(a.ActivePanel.Path) == filepath.Clean(a.AnchorPath) {
+			return
+		}
+	}
+
 	if a.ViewMode == ViewHybridTree && a.TreeFocused {
 		if a.TreePanel.SelectedIsExpanded() {
 			a.TreePanel.CollapseSelected()
@@ -963,16 +1032,22 @@ func (a *App) navigateUp() {
 
 // jumpToHome navigates to $HOME, preserving tree state.
 func (a *App) jumpToHome() {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return
+	target := ""
+	if a.AnchorActive {
+		target = a.AnchorPath
+	} else {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return
+		}
+		target = home
 	}
 	if a.ViewMode == ViewHybridTree {
-		a.TreePanel.NavigateToPath(home)
-		a.RightPanel.Path = home
+		a.TreePanel.NavigateToPath(target)
+		a.RightPanel.Path = target
 		a.RightPanel.LoadDir()
 	} else {
-		a.ActivePanel.Path = home
+		a.ActivePanel.Path = target
 		a.ActivePanel.LoadDir()
 	}
 	a.updateStatusBars()
@@ -980,13 +1055,17 @@ func (a *App) jumpToHome() {
 
 // jumpToRoot navigates to "/" (filesystem root).
 func (a *App) jumpToRoot() {
+	target := "/"
+	if a.AnchorActive {
+		target = a.AnchorPath
+	}
 	if a.ViewMode == ViewHybridTree {
-		a.TreePanel.SetRootPath("/")
-		a.TreePanel.ExpandToPath("/")
-		a.RightPanel.Path = "/"
+		a.TreePanel.SetRootPath(target)
+		a.TreePanel.ExpandToPath(target)
+		a.RightPanel.Path = target
 		a.RightPanel.LoadDir()
 	} else {
-		a.ActivePanel.Path = "/"
+		a.ActivePanel.Path = target
 		a.ActivePanel.LoadDir()
 	}
 	a.updateStatusBars()
@@ -1107,16 +1186,19 @@ func (a *App) resizeFilterInput(height int) {
 
 // updateStatusBars refreshes both status bar texts.
 func (a *App) updateStatusBars() {
-	gitPrefix := ""
+	prefix := ""
+	if a.AnchorActive {
+		prefix = "⚓ "
+	}
 	if a.GitRepo != nil && a.GitRepo.Branch != "" {
-		gitPrefix = "[" + a.GitRepo.Branch + "] "
+		prefix += "[" + a.GitRepo.Branch + "] "
 	}
 
 	if a.ViewMode == ViewHybridTree {
-		a.LeftStatus.SetText(gitPrefix + a.TreePanel.SelectedPath())
+		a.LeftStatus.SetText(prefix + a.TreePanel.SelectedPath())
 		a.RightStatus.SetText(a.RightPanel.StatusText())
 	} else {
-		a.LeftStatus.SetText(gitPrefix + a.LeftPanel.StatusText())
+		a.LeftStatus.SetText(prefix + a.LeftPanel.StatusText())
 		a.RightStatus.SetText(a.RightPanel.StatusText())
 	}
 }
@@ -1317,6 +1399,7 @@ func (a *App) buildMenuBar() {
 			Title:  "Go",
 			Hotkey: 'g',
 			Items: []MenuItem{
+				{Label: "Anchor", Shortcut: "a", Action: func() { a.toggleAnchor() }},
 				{Label: "Go to Path...", Shortcut: "Ctrl+L", Action: func() { a.showGoToPathDialog() }},
 				{Label: "Jump to Home", Shortcut: "~", Action: func() { a.jumpToHome() }},
 				{Label: "Jump to Root /", Shortcut: "\\", Action: func() { a.jumpToRoot() }},
@@ -1547,6 +1630,8 @@ func (a *App) saveWorkspaceState() {
 	ws.VSplit = a.VSplit
 	ws.TreeRootPath = a.TreePanel.RootPath
 	ws.TreeExpandedPaths = a.TreePanel.ExpandedPaths()
+	ws.AnchorPath = a.AnchorPath
+	ws.AnchorActive = a.AnchorActive
 }
 
 // restoreWorkspaceState applies a saved workspace state to the app.
@@ -1572,6 +1657,8 @@ func (a *App) restoreWorkspaceState() {
 	a.PreviewActive = ws.PreviewActive
 	a.HSplit = ws.HSplit
 	a.VSplit = ws.VSplit
+	a.AnchorPath = ws.AnchorPath
+	a.AnchorActive = ws.AnchorActive
 
 	// Restore tree state
 	if ws.TreeRootPath != "" {
@@ -1639,6 +1726,8 @@ func (a *App) createWorkspace() {
 	ws.VSplit = a.VSplit
 	ws.TreeRootPath = a.TreePanel.RootPath
 	ws.TreeExpandedPaths = a.TreePanel.ExpandedPaths()
+	ws.AnchorPath = a.AnchorPath
+	ws.AnchorActive = a.AnchorActive
 
 	a.WorkspaceMgr.Active = idx
 	a.WorkspaceMgr.renderTabBar()
@@ -1739,10 +1828,7 @@ func (a *App) runFuzzySearch(query string) {
 		return
 	}
 
-	rootDir := a.ActivePanel.Path
-	if a.ViewMode == ViewHybridTree {
-		rootDir = a.TreePanel.RootPath
-	}
+	rootDir := a.anchoredRoot()
 
 	resultCh := make(chan FuzzyResult, 100)
 	go FuzzySearch(FuzzySearchOpts{

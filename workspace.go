@@ -26,6 +26,8 @@ type Workspace struct {
 	VSplit            int             `json:"vsplit"`
 	TreeRootPath      string          `json:"tree_root_path"`
 	TreeExpandedPaths map[string]bool `json:"tree_expanded_paths"`
+	AnchorPath        string          `json:"anchor_path"`
+	AnchorActive      bool            `json:"anchor_active"`
 }
 
 // WorkspaceManager manages multiple workspaces with a tab bar.
