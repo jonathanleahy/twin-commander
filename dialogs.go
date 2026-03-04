@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
@@ -317,6 +318,7 @@ func (a *App) showKeybindingsDialog() {
   e        Open in $EDITOR (respects config)
   o        Open with system default (xdg-open)
   b        Beyond Compare
+  D        Disk usage (size breakdown)
   :        Run shell command (%f=file, %d=dir, %s=selected)
   Ctrl+G   Git diff
   gs       Git stage/unstage
@@ -446,6 +448,138 @@ Beyond Compare, $EDITOR Integration.
 		AddItem(nil, 0, 1, false)
 
 	a.Pages.AddPage("about-dialog", overlay, true, true)
+	a.Application.SetFocus(tv)
+}
+
+// showDiskUsage displays a sorted breakdown of subdirectory sizes.
+func (a *App) showDiskUsage() {
+	dir := a.ActivePanel.Path
+	if a.ViewMode == ViewHybridTree && a.TreeFocused {
+		dir = a.TreePanel.SelectedPath()
+	}
+
+	entries := a.ActivePanel.Entries
+	if a.ViewMode == ViewHybridTree {
+		entries = a.RightPanel.Entries
+	}
+
+	// Collect directory sizes from cache
+	type dirSize struct {
+		Name string
+		Size int64
+	}
+	var dirs []dirSize
+	var totalSize int64
+
+	for _, e := range entries {
+		if !e.IsDir || e.Name == ".." {
+			continue
+		}
+		path := filepath.Join(dir, e.Name)
+		size, ok := a.DirSizeCache.Get(path)
+		if !ok {
+			// Calculate synchronously for dirs not yet cached
+			cancel := make(chan struct{})
+			size = calcDirSizeWithCancel(path, cancel)
+		}
+		dirs = append(dirs, dirSize{Name: e.Name, Size: size})
+		totalSize += size
+	}
+
+	// Also count files in current directory
+	for _, e := range entries {
+		if e.IsDir || e.Name == ".." {
+			continue
+		}
+		totalSize += e.Size
+	}
+
+	if len(dirs) == 0 {
+		a.setStatusError("No subdirectories")
+		return
+	}
+
+	// Sort by size descending
+	sort.Slice(dirs, func(i, j int) bool {
+		return dirs[i].Size > dirs[j].Size
+	})
+
+	a.DialogActive = true
+	tv := tview.NewTextView().
+		SetDynamicColors(true).
+		SetScrollable(true)
+	tv.SetBorder(true)
+	tv.SetTitle(fmt.Sprintf(" Disk Usage: %s ", filepath.Base(dir)))
+	tv.SetBorderPadding(1, 1, 2, 2)
+
+	var text strings.Builder
+	barWidth := 30
+
+	for _, d := range dirs {
+		pct := float64(0)
+		if totalSize > 0 {
+			pct = float64(d.Size) / float64(totalSize) * 100
+		}
+		filled := int(float64(barWidth) * pct / 100)
+		if filled > barWidth {
+			filled = barWidth
+		}
+
+		bar := strings.Repeat("█", filled) + strings.Repeat("░", barWidth-filled)
+		fmt.Fprintf(&text, "[yellow]%8s[white]  %s  [blue]%s/[-] (%.1f%%)\n",
+			FormatSize(d.Size), bar, d.Name, pct)
+	}
+
+	// Add total
+	fmt.Fprintf(&text, "\n[green]Total: %s[-]", FormatSize(totalSize))
+
+	tv.SetText(text.String())
+
+	closeDialog := func() {
+		a.DialogActive = false
+		a.Pages.RemovePage("disk-usage")
+		a.restoreFocus()
+	}
+
+	tv.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEscape:
+			closeDialog()
+			return nil
+		case tcell.KeyRune:
+			switch event.Rune() {
+			case 'q':
+				closeDialog()
+				return nil
+			case 'j':
+				row, col := tv.GetScrollOffset()
+				tv.ScrollTo(row+1, col)
+				return nil
+			case 'k':
+				row, col := tv.GetScrollOffset()
+				if row > 0 {
+					tv.ScrollTo(row-1, col)
+				}
+				return nil
+			}
+		}
+		return event
+	})
+
+	height := len(dirs) + 6
+	if height > 30 {
+		height = 30
+	}
+	width := 70
+	overlay := tview.NewFlex().SetDirection(tview.FlexColumn).
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(tv, height, 0, true).
+			AddItem(nil, 0, 1, false), width, 0, true).
+		AddItem(nil, 0, 1, false)
+
+	a.Pages.AddPage("disk-usage", overlay, true, true)
 	a.Application.SetFocus(tv)
 }
 
